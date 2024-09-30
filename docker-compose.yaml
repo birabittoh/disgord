@@ -2,9 +2,8 @@ name: telegle
 
 services:
   app:
-    build:
-      context: .
-    image: 'birabittoh/disgord'
+    build: .
+    image: ghcr.io/birabittoh/disgord:main
     container_name: 'disgord'
     restart: unless-stopped
     volumes:
