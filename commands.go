@@ -14,7 +14,8 @@ var (
 func InitHandlers() {
 	handlersMap = map[string]BotCommand{
 		"echo":   {ShortCode: "e", Handler: handleEcho, Help: "echoes a message"},
-		"prefix": {ShortCode: "pre", Handler: handlePrefix, Help: "sets the bot's prefix"},
+		"shoot":  {ShortCode: "sh", Handler: handleShoot, Help: "shoots a random user in your voice channel"},
+		"prefix": {Handler: handlePrefix, Help: "sets the bot's prefix"},
 		"help":   {ShortCode: "h", Handler: handleHelp, Help: "shows this help message"},
 	}
 
@@ -26,26 +27,18 @@ func InitHandlers() {
 	}
 }
 
-func handleHelp(args []string, s *discordgo.Session, m *discordgo.MessageCreate) string {
-	helpText := "**Bot commands:**\n"
-	for command, botCommand := range handlersMap {
-		helpText += "* " + botCommand.FormatHelp(command) + "\n"
-	}
-	return helpText
-}
-
 func handleEcho(args []string, s *discordgo.Session, m *discordgo.MessageCreate) string {
 	return strings.Join(args, " ")
 }
 
 func handlePrefix(args []string, s *discordgo.Session, m *discordgo.MessageCreate) string {
 	if len(args) == 0 {
-		return "Usage: prefix <new prefix>"
+		return "Usage: " + formatCommand("prefix <new prefix>")
 	}
 
 	newPrefix := args[0]
 	if len(newPrefix) > 10 {
-		return "Prefix is too long"
+		return "Prefix is too long."
 	}
 
 	config.Values.Prefix = newPrefix
@@ -54,5 +47,13 @@ func handlePrefix(args []string, s *discordgo.Session, m *discordgo.MessageCreat
 		logger.Errorf("could not save config: %s", err)
 	}
 
-	return "Prefix set to " + newPrefix
+	return "Prefix set to " + formatCommand("")
+}
+
+func handleHelp(args []string, s *discordgo.Session, m *discordgo.MessageCreate) string {
+	helpText := "**Bot commands:**\n"
+	for command, botCommand := range handlersMap {
+		helpText += "* " + botCommand.FormatHelp(command) + "\n"
+	}
+	return helpText
 }

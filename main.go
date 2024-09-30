@@ -33,7 +33,7 @@ func handleCommand(s *discordgo.Session, m *discordgo.MessageCreate) (response s
 
 	botCommand, found := handlersMap[command]
 	if !found {
-		response = "unknown command: " + command
+		response = "Unknown command: " + formatCommand(command)
 		return
 	}
 
@@ -80,7 +80,6 @@ func main() {
 	}
 
 	InitHandlers()
-
 	session.AddHandler(messageHandler)
 	session.AddHandler(readyHandler)
 

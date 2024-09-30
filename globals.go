@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/BiRabittoh/disgord/myconfig"
@@ -11,7 +10,15 @@ import (
 )
 
 const (
-	helpFmt = "%s - _%s_"
+	msgError = "Something went wrong."
+	helpFmt  = "%s - _%s_"
+)
+
+var (
+	config *myconfig.Config[Config]
+
+	logger = mylog.NewLogger(os.Stdout, "main", mylog.DEBUG)
+	yt     = youtube.Client{}
 )
 
 type KeyValue struct {
@@ -36,24 +43,3 @@ type BotCommand struct {
 	ShortCode string
 	Help      string
 }
-
-func formatCommand(command string) string {
-	return fmt.Sprintf("`%s%s`", config.Values.Prefix, command)
-}
-
-func (bc BotCommand) FormatHelp(command string) string {
-	var shortCodeStr string
-	if bc.ShortCode != "" {
-		shortCodeStr = fmt.Sprintf(" (%s)", formatCommand(bc.ShortCode))
-	}
-	return fmt.Sprintf(helpFmt, formatCommand(command)+shortCodeStr, bc.Help)
-}
-
-var (
-	discordToken string
-	appID        string
-	config       *myconfig.Config[Config]
-
-	logger = mylog.NewLogger(os.Stdout, "main", mylog.DEBUG)
-	yt     = youtube.Client{}
-)
