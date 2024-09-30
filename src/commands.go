@@ -1,6 +1,7 @@
-package main
+package src
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
@@ -10,6 +11,14 @@ var (
 	handlersMap   map[string]BotCommand
 	shortCommands = map[string]string{}
 )
+
+func (bc BotCommand) FormatHelp(command string) string {
+	var shortCodeStr string
+	if bc.ShortCode != "" {
+		shortCodeStr = fmt.Sprintf(" (%s)", formatCommand(bc.ShortCode))
+	}
+	return fmt.Sprintf(helpFmt, formatCommand(command)+shortCodeStr, bc.Help)
+}
 
 func InitHandlers() {
 	handlersMap = map[string]BotCommand{
@@ -27,6 +36,27 @@ func InitHandlers() {
 	}
 }
 
+func HandleCommand(s *discordgo.Session, m *discordgo.MessageCreate) (response string, ok bool, err error) {
+	command, args, ok := parseUserMessage(m.Content)
+	if !ok {
+		return
+	}
+
+	longCommand, short := shortCommands[command]
+	if short {
+		command = longCommand
+	}
+
+	botCommand, found := handlersMap[command]
+	if !found {
+		response = "Unknown command: " + formatCommand(command)
+		return
+	}
+
+	response = botCommand.Handler(args, s, m)
+	return
+}
+
 func handleEcho(args []string, s *discordgo.Session, m *discordgo.MessageCreate) string {
 	return strings.Join(args, " ")
 }
@@ -41,8 +71,8 @@ func handlePrefix(args []string, s *discordgo.Session, m *discordgo.MessageCreat
 		return "Prefix is too long."
 	}
 
-	config.Values.Prefix = newPrefix
-	err := config.Save()
+	Config.Values.Prefix = newPrefix
+	err := Config.Save()
 	if err != nil {
 		logger.Errorf("could not save config: %s", err)
 	}

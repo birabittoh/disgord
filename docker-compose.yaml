@@ -1,0 +1,12 @@
+name: telegle
+
+services:
+  app:
+    build:
+      context: .
+    image: 'birabittoh/disgord'
+    container_name: 'disgord'
+    restart: unless-stopped
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./config.json:/app/config.json

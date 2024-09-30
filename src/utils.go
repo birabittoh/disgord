@@ -1,18 +1,11 @@
-package main
+package src
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/bwmarrin/discordgo"
 )
-
-func (bc BotCommand) FormatHelp(command string) string {
-	var shortCodeStr string
-	if bc.ShortCode != "" {
-		shortCodeStr = fmt.Sprintf(" (%s)", formatCommand(bc.ShortCode))
-	}
-	return fmt.Sprintf(helpFmt, formatCommand(command)+shortCodeStr, bc.Help)
-}
 
 func getVoiceChannelID(s *discordgo.Session, m *discordgo.MessageCreate) (response string, g *discordgo.Guild, voiceChannelID string) {
 	if m.Member == nil {
@@ -41,5 +34,16 @@ func getVoiceChannelID(s *discordgo.Session, m *discordgo.MessageCreate) (respon
 }
 
 func formatCommand(command string) string {
-	return fmt.Sprintf("`%s%s`", config.Values.Prefix, command)
+	return fmt.Sprintf("`%s%s`", Config.Values.Prefix, command)
+}
+
+func parseUserMessage(messageContent string) (command string, args []string, ok bool) {
+	after, found := strings.CutPrefix(messageContent, Config.Values.Prefix)
+	if !found {
+		return
+	}
+
+	userInput := strings.Split(after, " ")
+	command = strings.ToLower(userInput[0])
+	return command, userInput[1:], len(command) > 0
 }

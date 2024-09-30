@@ -1,4 +1,4 @@
-package main
+package src
 
 import (
 	"fmt"
@@ -56,7 +56,7 @@ func GetMagazine(userID string) (q *Magazine) {
 		return
 	}
 
-	q = NewMagazine(config.Values.MagazineSize)
+	q = NewMagazine(Config.Values.MagazineSize)
 	magazines[userID] = q
 	return
 }
