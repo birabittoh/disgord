@@ -13,7 +13,14 @@ func getVoiceChannelID(s *discordgo.Session, m *discordgo.MessageCreate) (respon
 		return
 	}
 
-	g, err := s.State.Guild(m.GuildID)
+	_, err := s.Guild(m.GuildID)
+	if err != nil {
+		logger.Errorf("could not update guild: %s", err)
+		response = msgError
+		return
+	}
+
+	g, err = s.State.Guild(m.GuildID)
 	if err != nil {
 		logger.Errorf("could not get guild: %s", err)
 		response = msgError
