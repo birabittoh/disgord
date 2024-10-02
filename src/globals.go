@@ -10,8 +10,9 @@ import (
 )
 
 const (
-	msgError = "Something went wrong."
-	helpFmt  = "%s - _%s_"
+	msgError      = "Something went wrong."
+	helpFmt       = "%s - _%s_"
+	defaultPrefix = "$"
 )
 
 var (
@@ -31,10 +32,9 @@ type MyConfig struct {
 	ApplicationID string `json:"applicationId"`
 	Token         string `json:"token"`
 
-	Prefix string `json:"prefix"`
-
-	Outros []KeyValuePair `json:"outros"`
-	Radios []KeyValuePair `json:"radios"`
+	Prefixes []KeyValuePair `json:"prefixes"`
+	Outros   []KeyValuePair `json:"outros"`
+	Radios   []KeyValuePair `json:"radios"`
 
 	MagazineSize uint `json:"magazineSize"`
 }

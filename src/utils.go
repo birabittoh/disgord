@@ -40,12 +40,12 @@ func getVoiceChannelID(s *discordgo.Session, m *discordgo.MessageCreate) (respon
 	return
 }
 
-func formatCommand(command string) string {
-	return fmt.Sprintf("`%s%s`", Config.Values.Prefix, command)
+func formatCommand(command, guildID string) string {
+	return fmt.Sprintf("`%s%s`", getPrefix(guildID), command)
 }
 
-func parseUserMessage(messageContent string) (command string, args []string, ok bool) {
-	after, found := strings.CutPrefix(messageContent, Config.Values.Prefix)
+func parseUserMessage(messageContent, guildID string) (command string, args []string, ok bool) {
+	after, found := strings.CutPrefix(messageContent, getPrefix(guildID))
 	if !found {
 		return
 	}
@@ -53,4 +53,40 @@ func parseUserMessage(messageContent string) (command string, args []string, ok 
 	userInput := strings.Split(after, " ")
 	command = strings.ToLower(userInput[0])
 	return command, userInput[1:], len(command) > 0
+}
+
+func getPrefix(guildID string) string {
+	for _, prefix := range Config.Values.Prefixes {
+		if prefix.Name == guildID {
+			return prefix.Value
+		}
+	}
+
+	Config.Values.Prefixes = append(Config.Values.Prefixes, KeyValuePair{Name: guildID, Value: defaultPrefix})
+	err := Config.Save()
+	if err != nil {
+		logger.Errorf("could not save config: %s", err)
+	}
+	return defaultPrefix
+}
+
+func setPrefix(guildID, prefixValue string) string {
+	var found bool
+	for i, prefix := range Config.Values.Prefixes {
+		if prefix.Name == guildID {
+			Config.Values.Prefixes[i].Value = prefixValue
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		Config.Values.Prefixes = append(Config.Values.Prefixes, KeyValuePair{Name: guildID, Value: prefixValue})
+	}
+
+	err := Config.Save()
+	if err != nil {
+		logger.Errorf("could not save config: %s", err)
+	}
+	return defaultPrefix
 }

@@ -1,7 +1,6 @@
 {
     "applicationId": "your-application-id-here",
     "token": "your-token-here",
-    "prefix": "$",
     "magazineSize": 3,
     "outros":
     [
