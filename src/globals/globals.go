@@ -1,4 +1,4 @@
-package src
+package globals
 
 import (
 	"os"
@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	msgError      = "Something went wrong."
+	MsgError      = "Something went wrong."
 	helpFmt       = "%s - _%s_"
 	defaultPrefix = "$"
 )
@@ -20,7 +20,7 @@ var (
 	Config   *myconfig.Config[MyConfig]
 
 	logger = mylog.NewLogger(os.Stdout, "main", mylog.DEBUG)
-	yt     = youtube.Client{}
+	YT     = youtube.Client{}
 )
 
 type KeyValuePair struct {

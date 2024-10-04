@@ -1,12 +1,17 @@
-package src
+package shoot
 
 import (
 	"fmt"
+	"os"
 	"time"
 
+	gl "github.com/BiRabittoh/disgord/src/globals"
+	"github.com/BiRabittoh/disgord/src/mylog"
 	"github.com/bwmarrin/discordgo"
 	"golang.org/x/exp/rand"
 )
+
+var logger = mylog.NewLogger(os.Stdin, "shoot", mylog.DEBUG)
 
 type Magazine struct {
 	size uint
@@ -56,15 +61,21 @@ func GetMagazine(userID string) (q *Magazine) {
 		return
 	}
 
-	q = NewMagazine(Config.Values.MagazineSize)
+	q = NewMagazine(gl.Config.Values.MagazineSize)
 	magazines[userID] = q
 	return
 }
 
-func handleShoot(args []string, s *discordgo.Session, m *discordgo.MessageCreate) string {
+func HandleShoot(args []string, s *discordgo.Session, m *discordgo.MessageCreate) string {
 	const bustProbability = 50
 
-	response, guild, voiceChannelID := getVoiceChannelID(s, m)
+	_, err := s.Guild(m.GuildID)
+	if err != nil {
+		logger.Errorf("could not update guild: %s", err)
+		return gl.MsgError
+	}
+
+	response, guild, voiceChannelID := gl.GetVoiceChannelID(s, m)
 	if voiceChannelID == "" {
 		return response
 	}
@@ -101,7 +112,7 @@ func handleShoot(args []string, s *discordgo.Session, m *discordgo.MessageCreate
 		victimID = allMembers[rand.Intn(len(allMembers))]
 	}
 
-	err := s.GuildMemberMove(m.GuildID, victimID, nil)
+	err = s.GuildMemberMove(m.GuildID, victimID, nil)
 	if err != nil {
 		logger.Errorf("could not kick user: %s", err)
 		return "Failed to kick the user from the voice channel."

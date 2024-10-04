@@ -1,29 +1,23 @@
-package src
+package globals
 
 import (
 	"fmt"
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/kkdai/youtube/v2"
 )
 
-func getVoiceChannelID(s *discordgo.Session, m *discordgo.MessageCreate) (response string, g *discordgo.Guild, voiceChannelID string) {
+func GetVoiceChannelID(s *discordgo.Session, m *discordgo.MessageCreate) (response string, g *discordgo.Guild, voiceChannelID string) {
 	if m.Member == nil {
 		response = "Please, use this inside a server."
 		return
 	}
 
-	_, err := s.Guild(m.GuildID)
-	if err != nil {
-		logger.Errorf("could not update guild: %s", err)
-		response = msgError
-		return
-	}
-
-	g, err = s.State.Guild(m.GuildID)
+	g, err := s.State.Guild(m.GuildID)
 	if err != nil {
 		logger.Errorf("could not get guild: %s", err)
-		response = msgError
+		response = MsgError
 		return
 	}
 
@@ -40,12 +34,24 @@ func getVoiceChannelID(s *discordgo.Session, m *discordgo.MessageCreate) (respon
 	return
 }
 
-func formatCommand(command, guildID string) string {
-	return fmt.Sprintf("`%s%s`", getPrefix(guildID), command)
+func (bc BotCommand) FormatHelp(command, guildID string) string {
+	var shortCodeStr string
+	if bc.ShortCode != "" {
+		shortCodeStr = fmt.Sprintf(" (%s)", FormatCommand(bc.ShortCode, guildID))
+	}
+	return fmt.Sprintf(helpFmt, FormatCommand(command, guildID)+shortCodeStr, bc.Help)
 }
 
-func parseUserMessage(messageContent, guildID string) (command string, args []string, ok bool) {
-	after, found := strings.CutPrefix(messageContent, getPrefix(guildID))
+func FormatCommand(command, guildID string) string {
+	return fmt.Sprintf("`%s%s`", GetPrefix(guildID), command)
+}
+
+func FormatVideo(v *youtube.Video) string {
+	return fmt.Sprintf("**%s** (`%s`)", v.Title, v.Duration.String())
+}
+
+func ParseUserMessage(messageContent, guildID string) (command string, args []string, ok bool) {
+	after, found := strings.CutPrefix(messageContent, GetPrefix(guildID))
 	if !found {
 		return
 	}
@@ -55,7 +61,7 @@ func parseUserMessage(messageContent, guildID string) (command string, args []st
 	return command, userInput[1:], len(command) > 0
 }
 
-func getPrefix(guildID string) string {
+func GetPrefix(guildID string) string {
 	for _, prefix := range Config.Values.Prefixes {
 		if prefix.Name == guildID {
 			return prefix.Value
@@ -70,7 +76,7 @@ func getPrefix(guildID string) string {
 	return defaultPrefix
 }
 
-func setPrefix(guildID, prefixValue string) string {
+func SetPrefix(guildID, prefixValue string) string {
 	var found bool
 	for i, prefix := range Config.Values.Prefixes {
 		if prefix.Name == guildID {
