@@ -1,12 +1,22 @@
 package src
 
 import (
+	"fmt"
 	"strings"
 
 	gl "github.com/BiRabittoh/disgord/src/globals"
 	"github.com/BiRabittoh/disgord/src/music"
 	"github.com/BiRabittoh/disgord/src/shoot"
 	"github.com/bwmarrin/discordgo"
+)
+
+const (
+	MsgUnknownCommand = "Unknown command: %s."
+	MsgPrefixSet      = "Prefix set to `%s`."
+	MsgPrefixTooLong  = "Prefix is too long."
+	MsgUsagePrefix    = "Usage: %s <new prefix>."
+	MsgHelp           = "**Bot commands:**\n%s"
+	MsgHelpCommandFmt = "* %s\n"
 )
 
 var (
@@ -50,7 +60,7 @@ func HandleCommand(s *discordgo.Session, m *discordgo.MessageCreate) (response s
 
 	botCommand, found := handlersMap[command]
 	if !found {
-		response = "Unknown command: " + gl.FormatCommand(command, m.GuildID)
+		response = fmt.Sprintf(MsgUnknownCommand, gl.FormatCommand(command, m.GuildID))
 		return
 	}
 
@@ -64,23 +74,24 @@ func handleEcho(args []string, s *discordgo.Session, m *discordgo.MessageCreate)
 
 func handlePrefix(args []string, s *discordgo.Session, m *discordgo.MessageCreate) string {
 	if len(args) == 0 {
-		return "Usage: " + gl.FormatCommand("prefix <new prefix>", m.GuildID) + "."
+		return fmt.Sprintf(MsgUsagePrefix, gl.FormatCommand("prefix", m.GuildID))
 	}
 
 	newPrefix := args[0]
 	if len(newPrefix) > 10 {
-		return "Prefix is too long."
+		return MsgPrefixTooLong
 	}
 
 	gl.SetPrefix(m.GuildID, newPrefix)
 
-	return "Prefix set to " + newPrefix + "."
+	return fmt.Sprintf(MsgPrefixSet, newPrefix)
 }
 
 func handleHelp(args []string, s *discordgo.Session, m *discordgo.MessageCreate) string {
-	helpText := "**Bot commands:**\n"
+	helpText := MsgHelp
 	for command, botCommand := range handlersMap {
-		helpText += "* " + botCommand.FormatHelp(command, m.GuildID) + "\n"
+		// helpText += fmt.Sprintf()
+		helpText += fmt.Sprintf(MsgHelpCommandFmt, botCommand.FormatHelp(command, m.GuildID))
 	}
 	return helpText
 }

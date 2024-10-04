@@ -6,12 +6,11 @@ import (
 	"github.com/BiRabittoh/disgord/src/myconfig"
 	"github.com/BiRabittoh/disgord/src/mylog"
 	"github.com/bwmarrin/discordgo"
-	"github.com/kkdai/youtube/v2"
 )
 
 const (
 	MsgError      = "Something went wrong."
-	helpFmt       = "%s - _%s_"
+	MsgHelpFmt    = "%s - _%s_"
 	defaultPrefix = "$"
 )
 
@@ -20,7 +19,6 @@ var (
 	Config   *myconfig.Config[MyConfig]
 
 	logger = mylog.NewLogger(os.Stdout, "main", mylog.DEBUG)
-	YT     = youtube.Client{}
 )
 
 type KeyValuePair struct {

@@ -15,11 +15,11 @@ var logger = mylog.NewLogger(os.Stdout, "init", mylog.DEBUG)
 
 func messageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 	if m.Author.ID == s.State.User.ID {
-		logger.Debugf("Ignoring own message: %s", m.Content)
+		// logger.Debugf("Ignoring own message: %s", m.Content)
 		return
-	} else {
-		logger.Debug("Got a message: " + m.Content)
 	}
+
+	logger.Debug("Got a message: " + m.Content)
 
 	response, ok, err := src.HandleCommand(s, m)
 	if err != nil {

@@ -21,14 +21,18 @@ type Queue struct {
 var queues = map[string]*Queue{}
 
 // GetOrCreateQueue fetches or creates a new queue for the guild
-func GetOrCreateQueue(vc *discordgo.VoiceConnection) *Queue {
+func GetOrCreateQueue(vc *discordgo.VoiceConnection) (q *Queue) {
 	q, ok := queues[vc.GuildID]
 	if !ok {
 		q = &Queue{vc: vc}
 		queues[vc.GuildID] = q
+		return
 	}
 
-	return q
+	if q.vc.Ready == false {
+		q.vc = vc
+	}
+	return
 }
 
 // GetQueue returns either nil or the queue for the requested guild
@@ -70,7 +74,7 @@ func (q *Queue) PlayNext() (err error) {
 	q.nowPlaying = q.items[0]
 	q.items = q.items[1:]
 
-	formats := q.nowPlaying.Formats.WithAudioChannels().Type("audio/webm")
+	formats := q.nowPlaying.Formats.WithAudioChannels()
 	if len(formats) == 0 {
 		logger.Debug("no formats with audio channels available for video " + q.nowPlaying.ID)
 		return q.PlayNext()

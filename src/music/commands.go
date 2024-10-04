@@ -1,9 +1,27 @@
 package music
 
 import (
+	"fmt"
+
 	gl "github.com/BiRabittoh/disgord/src/globals"
 	"github.com/bwmarrin/discordgo"
+	"github.com/kkdai/youtube/v2"
 )
+
+const (
+	MsgNoURL            = "Please, provide a YouTube URL."
+	MsgAddedToQueue     = "Added to queue: %s."
+	MsgNothingIsPlaying = "Nothing is playing."
+	MsgSameVoiceChannel = "You need to be in the same voice channel to use this command."
+	MsgPaused           = "Paused."
+	MsgResumed          = "Resumed."
+	MsgSkipped          = "Skipped."
+	MsgCleared          = "Cleared."
+	MsgLeft             = "Left."
+	MsgQueueLine        = "%d. %s\n"
+)
+
+var yt = youtube.Client{}
 
 func HandlePlay(args []string, s *discordgo.Session, m *discordgo.MessageCreate) string {
 	r, _, vc := gl.GetVoiceChannelID(s, m)
@@ -12,7 +30,7 @@ func HandlePlay(args []string, s *discordgo.Session, m *discordgo.MessageCreate)
 	}
 
 	if len(args) == 0 {
-		return "Please, provide a YouTube URL."
+		return MsgNoURL
 	}
 
 	voice, err := s.ChannelVoiceJoin(m.GuildID, vc, false, true)
@@ -22,7 +40,7 @@ func HandlePlay(args []string, s *discordgo.Session, m *discordgo.MessageCreate)
 	}
 
 	// Get the video information
-	video, err := gl.YT.GetVideo(args[0])
+	video, err := yt.GetVideo(args[0])
 	if err != nil {
 		logger.Errorf("could not get video: %v", err)
 		return gl.MsgError
@@ -34,7 +52,7 @@ func HandlePlay(args []string, s *discordgo.Session, m *discordgo.MessageCreate)
 	// Add video to the queue
 	q.AddVideo(video)
 
-	return "Added to queue: " + gl.FormatVideo(video)
+	return fmt.Sprintf(MsgAddedToQueue, gl.FormatVideo(video))
 }
 
 func HandlePause(args []string, s *discordgo.Session, m *discordgo.MessageCreate) string {
@@ -45,16 +63,16 @@ func HandlePause(args []string, s *discordgo.Session, m *discordgo.MessageCreate
 
 	q := GetQueue(g.ID)
 	if q == nil {
-		return "Nothing is playing."
+		return MsgNothingIsPlaying
 	}
 
 	if vc != q.VoiceChannelID() {
-		return "You need to be in the same voice channel to use this command."
+		return MsgSameVoiceChannel
 	}
 
 	q.Pause()
 
-	return "Paused."
+	return MsgPaused
 }
 
 func HandleResume(args []string, s *discordgo.Session, m *discordgo.MessageCreate) string {
@@ -65,16 +83,16 @@ func HandleResume(args []string, s *discordgo.Session, m *discordgo.MessageCreat
 
 	q := GetQueue(g.ID)
 	if q == nil {
-		return "Nothing is playing."
+		return MsgNothingIsPlaying
 	}
 
 	if vc != q.VoiceChannelID() {
-		return "You need to be in the same voice channel to use this command."
+		return MsgSameVoiceChannel
 	}
 
 	q.Resume()
 
-	return "Resumed."
+	return MsgResumed
 }
 
 func HandleSkip(args []string, s *discordgo.Session, m *discordgo.MessageCreate) string {
@@ -85,31 +103,31 @@ func HandleSkip(args []string, s *discordgo.Session, m *discordgo.MessageCreate)
 
 	q := GetQueue(g.ID)
 	if q == nil {
-		return "Nothing is playing."
+		return MsgNothingIsPlaying
 	}
 
 	if vc != q.VoiceChannelID() {
-		return "You need to be in the same voice channel to use this command."
+		return MsgSameVoiceChannel
 	}
 
 	err := q.PlayNext()
 	if err != nil {
-		return "Nothing is playing."
+		return MsgNothingIsPlaying
 	}
 
-	return "Skipped."
+	return MsgSkipped
 }
 
 func HandleQueue(args []string, s *discordgo.Session, m *discordgo.MessageCreate) string {
 	q := GetQueue(m.GuildID)
 	if q == nil {
-		return "Nothing is playing."
+		return MsgNothingIsPlaying
 	}
 
 	var out string
 	videos := q.Videos()
-	for _, v := range videos {
-		out += gl.FormatVideo(v) + "\n"
+	for i, v := range videos {
+		out += fmt.Sprintf(MsgQueueLine, i, gl.FormatVideo(v))
 	}
 	return out
 }
@@ -122,16 +140,16 @@ func HandleClear(args []string, s *discordgo.Session, m *discordgo.MessageCreate
 
 	q := GetQueue(g.ID)
 	if q == nil {
-		return "Nothing is playing."
+		return MsgNothingIsPlaying
 	}
 
 	if vc != q.VoiceChannelID() {
-		return "You need to be in the same voice channel to use this command."
+		return MsgSameVoiceChannel
 	}
 
 	q.Clear()
 
-	return "Cleared."
+	return MsgCleared
 }
 
 func HandleLeave(args []string, s *discordgo.Session, m *discordgo.MessageCreate) string {
@@ -142,11 +160,11 @@ func HandleLeave(args []string, s *discordgo.Session, m *discordgo.MessageCreate
 
 	q := GetQueue(g.ID)
 	if q == nil {
-		return "Nothing is playing."
+		return MsgNothingIsPlaying
 	}
 
 	if vc != q.VoiceChannelID() {
-		return "You need to be in the same voice channel to use this command."
+		return MsgSameVoiceChannel
 	}
 
 	err := q.Stop()
@@ -154,5 +172,5 @@ func HandleLeave(args []string, s *discordgo.Session, m *discordgo.MessageCreate
 		return gl.MsgError
 	}
 
-	return "Cleared."
+	return MsgLeft
 }

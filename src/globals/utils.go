@@ -39,7 +39,7 @@ func (bc BotCommand) FormatHelp(command, guildID string) string {
 	if bc.ShortCode != "" {
 		shortCodeStr = fmt.Sprintf(" (%s)", FormatCommand(bc.ShortCode, guildID))
 	}
-	return fmt.Sprintf(helpFmt, FormatCommand(command, guildID)+shortCodeStr, bc.Help)
+	return fmt.Sprintf(MsgHelpFmt, FormatCommand(command, guildID)+shortCodeStr, bc.Help)
 }
 
 func FormatCommand(command, guildID string) string {
