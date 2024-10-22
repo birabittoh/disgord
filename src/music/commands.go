@@ -40,7 +40,7 @@ func HandlePlay(args []string, s *discordgo.Session, m *discordgo.MessageCreate)
 	}
 
 	// Get the video information
-	video, err := yt.GetVideo(args[0])
+	video, err := getVideo(args)
 	if err != nil {
 		logger.Errorf("could not get video: %v", err)
 		return gl.MsgError

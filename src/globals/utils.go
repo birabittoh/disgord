@@ -1,12 +1,18 @@
 package globals
 
 import (
+	"errors"
 	"fmt"
+	"io"
+	"net/http"
+	"regexp"
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/kkdai/youtube/v2"
 )
+
+var searchPattern = regexp.MustCompile(`watch\?v\x3d([a-zA-Z0-9_-]{11})`)
 
 func GetVoiceChannelID(s *discordgo.Session, m *discordgo.MessageCreate) (response string, g *discordgo.Guild, voiceChannelID string) {
 	if m.Member == nil {
@@ -95,4 +101,25 @@ func SetPrefix(guildID, prefixValue string) string {
 		logger.Errorf("could not save config: %s", err)
 	}
 	return defaultPrefix
+}
+
+func Search(keywords []string) (videoID string, err error) {
+	resp, err := http.Get("https://www.youtube.com/results?search_query=" + strings.Join(keywords, "+"))
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+
+	pageContent, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return
+	}
+
+	matches := searchPattern.FindAllStringSubmatch(string(pageContent), -1)
+	if len(matches) == 0 {
+		err = errors.New("no video found")
+		return
+	}
+
+	return matches[0][1], nil
 }
