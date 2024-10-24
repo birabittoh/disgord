@@ -3,7 +3,7 @@ package music
 import (
 	"strings"
 
-	gl "github.com/BiRabittoh/disgord/src/globals"
+	gl "github.com/birabittoh/disgord/src/globals"
 	"github.com/kkdai/youtube/v2"
 )
 

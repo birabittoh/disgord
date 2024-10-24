@@ -5,7 +5,7 @@ BUILD_DIR=dist
 SRC_DIR=src
 
 # Build flags for versioning
-LDFLAGS=-ldflags "-X github.com/BiRabittoh/disgord/src/globals.CommitID=$(COMMIT_HASH)"
+LDFLAGS=-ldflags "-X github.com/birabittoh/disgord/src/globals.CommitID=$(COMMIT_HASH)"
 
 .PHONY: all build test run clean
 

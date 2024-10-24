@@ -1,4 +1,4 @@
-module github.com/BiRabittoh/disgord
+module github.com/birabittoh/disgord
 
 go 1.23.1
 

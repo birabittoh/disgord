@@ -21,7 +21,7 @@ COPY src ./src
 
 # Build
 RUN commit_hash=$(cat commitID | cut -c1-7) && \
-    CGO_ENABLED=0 go build -ldflags "-X github.com/BiRabittoh/disgord/src/globals.CommitID=$commit_hash" -trimpath -o /dist/app
+    CGO_ENABLED=0 go build -ldflags "-X github.com/birabittoh/disgord/src/globals.CommitID=$commit_hash" -trimpath -o /dist/app
 
 
 # Test

@@ -5,8 +5,8 @@ import (
 	"os"
 	"time"
 
-	gl "github.com/BiRabittoh/disgord/src/globals"
-	"github.com/BiRabittoh/disgord/src/mylog"
+	gl "github.com/birabittoh/disgord/src/globals"
+	"github.com/birabittoh/disgord/src/mylog"
 	"github.com/bwmarrin/discordgo"
 	"golang.org/x/exp/rand"
 )

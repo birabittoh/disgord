@@ -3,7 +3,7 @@ package music
 import (
 	"os"
 
-	"github.com/BiRabittoh/disgord/src/mylog"
+	"github.com/birabittoh/disgord/src/mylog"
 	"github.com/bwmarrin/discordgo"
 	"github.com/kkdai/youtube/v2"
 )

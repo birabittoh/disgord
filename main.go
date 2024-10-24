@@ -4,10 +4,10 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/BiRabittoh/disgord/src"
-	g "github.com/BiRabittoh/disgord/src/globals"
-	"github.com/BiRabittoh/disgord/src/myconfig"
-	"github.com/BiRabittoh/disgord/src/mylog"
+	"github.com/birabittoh/disgord/src"
+	g "github.com/birabittoh/disgord/src/globals"
+	"github.com/birabittoh/disgord/src/myconfig"
+	"github.com/birabittoh/disgord/src/mylog"
 	"github.com/bwmarrin/discordgo"
 )
 

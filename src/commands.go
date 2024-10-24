@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	gl "github.com/BiRabittoh/disgord/src/globals"
-	"github.com/BiRabittoh/disgord/src/music"
-	"github.com/BiRabittoh/disgord/src/shoot"
+	gl "github.com/birabittoh/disgord/src/globals"
+	"github.com/birabittoh/disgord/src/music"
+	"github.com/birabittoh/disgord/src/shoot"
 	"github.com/bwmarrin/discordgo"
 )
 

@@ -3,8 +3,8 @@ package globals
 import (
 	"os"
 
-	"github.com/BiRabittoh/disgord/src/myconfig"
-	"github.com/BiRabittoh/disgord/src/mylog"
+	"github.com/birabittoh/disgord/src/myconfig"
+	"github.com/birabittoh/disgord/src/mylog"
 	"github.com/bwmarrin/discordgo"
 )
 
