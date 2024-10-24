@@ -1,7 +1,7 @@
 package music
 
 import (
-	"github.com/ClintonCollins/dca"
+	"github.com/FoxeiZ/dca"
 	"github.com/bwmarrin/discordgo"
 )
 
@@ -68,6 +68,7 @@ func (a *Audio) Stop() {
 		return
 	}
 
+	a.stream.FinishNow()
 	a.session.Stop()
 	a.session.Cleanup()
 	a.stream = nil

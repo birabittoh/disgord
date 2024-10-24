@@ -3,7 +3,7 @@ module github.com/BiRabittoh/disgord
 go 1.23.1
 
 require (
-	github.com/ClintonCollins/dca v1.0.4
+	github.com/FoxeiZ/dca v0.0.0-20240420115706-e4859a963796
 	github.com/bwmarrin/discordgo v0.28.1
 	github.com/kkdai/youtube/v2 v2.10.1
 	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0

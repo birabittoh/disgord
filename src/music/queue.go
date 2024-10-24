@@ -74,7 +74,7 @@ func (q *Queue) PlayNext() (err error) {
 	q.nowPlaying = q.items[0]
 	q.items = q.items[1:]
 
-	formats := q.nowPlaying.Formats.WithAudioChannels()
+	formats := q.nowPlaying.Formats.Type("opus")
 	if len(formats) == 0 {
 		logger.Debug("no formats with audio channels available for video " + q.nowPlaying.ID)
 		return q.PlayNext()
