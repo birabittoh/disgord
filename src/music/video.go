@@ -1,6 +1,8 @@
 package music
 
 import (
+	"strings"
+
 	gl "github.com/birabittoh/disgord/src/globals"
 	"github.com/kkdai/youtube/v2"
 )
@@ -11,7 +13,7 @@ func getVideo(args []string) (*youtube.Video, error) {
 		return video, nil
 	}
 
-	id, err := gl.Search(args)
+	id, err := gl.Search(strings.Join(args, " "))
 	if err != nil || id == "" {
 		return nil, err
 	}

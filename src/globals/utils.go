@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 
@@ -103,8 +104,8 @@ func SetPrefix(guildID, prefixValue string) string {
 	return defaultPrefix
 }
 
-func Search(keywords []string) (videoID string, err error) {
-	resp, err := http.Get("https://www.youtube.com/results?search_query=" + strings.Join(keywords, "+"))
+func Search(query string) (videoID string, err error) {
+	resp, err := http.Get("https://www.youtube.com/results?search_query=" + url.QueryEscape(query))
 	if err != nil {
 		return
 	}
