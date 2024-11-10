@@ -56,7 +56,10 @@ func (q *Queue) AddVideo(video *youtube.Video) {
 func (q *Queue) AddVideos(videos []*youtube.Video) {
 	q.items = append(q.items, videos...)
 	if q.nowPlaying == nil {
-		q.PlayNext()
+		err := q.PlayNext()
+		if err != nil {
+			logger.Error(err)
+		}
 	}
 }
 
