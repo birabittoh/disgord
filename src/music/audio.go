@@ -6,11 +6,10 @@ import (
 )
 
 type Audio struct {
-	session  *dca.EncodeSession
-	stream   *dca.StreamingSession
-	Done     chan error
-	onFinish func()
-	paused   bool
+	session *dca.EncodeSession
+	stream  *dca.StreamingSession
+	paused  bool
+	Done    chan error
 }
 
 var audioEncodeOptions = &dca.EncodeOptions{
@@ -64,15 +63,16 @@ func (a *Audio) Resume() {
 }
 
 func (a *Audio) Stop() {
-	if a.stream == nil {
-		return
+	if a.stream != nil {
+		a.stream.FinishNow()
+		a.stream = nil
 	}
 
-	a.stream.FinishNow()
-	a.session.Stop()
-	a.session.Cleanup()
-	a.stream = nil
-	a.session = nil
+	if a.session != nil {
+		a.session.Stop()
+		a.session.Cleanup()
+		a.session = nil
+	}
 }
 
 func (a *Audio) Finished() (bool, error) {

@@ -6,6 +6,7 @@ import (
 
 	"github.com/birabittoh/disgord/src"
 	g "github.com/birabittoh/disgord/src/globals"
+	"github.com/birabittoh/disgord/src/music"
 	"github.com/birabittoh/disgord/src/myconfig"
 	"github.com/birabittoh/disgord/src/mylog"
 	"github.com/bwmarrin/discordgo"
@@ -44,6 +45,15 @@ func readyHandler(s *discordgo.Session, r *discordgo.Ready) {
 	logger.Infof("Logged in as %s", r.User.String())
 }
 
+func vsuHandler(s *discordgo.Session, vsu *discordgo.VoiceStateUpdate) {
+	if vsu.UserID != s.State.User.ID {
+		// update is not from this bot
+		return
+	}
+
+	music.HandleBotVSU(vsu)
+}
+
 func main() {
 	logger.Info("Starting bot... Commit " + g.CommitID)
 	var err error
@@ -60,6 +70,7 @@ func main() {
 	src.InitHandlers()
 	session.AddHandler(messageHandler)
 	session.AddHandler(readyHandler)
+	session.AddHandler(vsuHandler)
 
 	err = session.Open()
 	if err != nil {

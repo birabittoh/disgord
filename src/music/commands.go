@@ -174,3 +174,31 @@ func HandleLeave(args []string, s *discordgo.Session, m *discordgo.MessageCreate
 
 	return MsgLeft
 }
+
+func HandleBotVSU(vsu *discordgo.VoiceStateUpdate) {
+	if vsu.BeforeUpdate == nil {
+		// user joined a voice channel
+		return
+	}
+
+	queue := GetQueue(vsu.GuildID)
+	if queue == nil {
+		// no queue for this guild
+		return
+	}
+
+	if queue.NowPlaying() == nil {
+		// song has ended naturally
+		return
+	}
+
+	vc := queue.VoiceConnection()
+	if vc == nil {
+		return
+	}
+
+	if vsu.ChannelID == "" && vsu.BeforeUpdate.ChannelID == vc.ChannelID {
+		logger.Println("Bot disconnected from voice channel, stopping audio playback.")
+		queue.Stop()
+	}
+}

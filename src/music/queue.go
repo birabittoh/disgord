@@ -29,7 +29,7 @@ func GetOrCreateQueue(vc *discordgo.VoiceConnection) (q *Queue) {
 		return
 	}
 
-	if q.vc.Ready == false {
+	if !q.vc.Ready {
 		q.vc = vc
 	}
 	return
@@ -96,8 +96,16 @@ func (q *Queue) PlayNext() (err error) {
 func (q *Queue) Stop() error {
 	q.Clear()
 	q.nowPlaying = nil
-	q.audioStream.Stop()
-	return q.vc.Disconnect()
+
+	if q.audioStream != nil {
+		q.audioStream.Stop()
+	}
+
+	if q.vc != nil {
+		return q.vc.Disconnect()
+	}
+
+	return nil
 }
 
 // Pause pauses the player
@@ -125,4 +133,16 @@ func (q *Queue) Videos() []*youtube.Video {
 
 func (q *Queue) VoiceChannelID() string {
 	return q.vc.ChannelID
+}
+
+func (q *Queue) AudioStream() *Audio {
+	return q.audioStream
+}
+
+func (q *Queue) VoiceConnection() *discordgo.VoiceConnection {
+	return q.vc
+}
+
+func (q *Queue) NowPlaying() *youtube.Video {
+	return q.nowPlaying
 }
