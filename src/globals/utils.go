@@ -8,12 +8,17 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"time"
 
+	"github.com/birabittoh/myks"
 	"github.com/bwmarrin/discordgo"
 	"github.com/kkdai/youtube/v2"
 )
 
-var searchPattern = regexp.MustCompile(`watch\?v\x3d([a-zA-Z0-9_-]{11})`)
+var (
+	searchPattern = regexp.MustCompile(`watch\?v\x3d([a-zA-Z0-9_-]{11})`)
+	searchKS      = myks.New[string](12 * time.Hour)
+)
 
 func GetVoiceChannelID(s *discordgo.Session, m *discordgo.MessageCreate) (response string, g *discordgo.Guild, voiceChannelID string) {
 	if m.Member == nil {
@@ -105,7 +110,14 @@ func SetPrefix(guildID, prefixValue string) string {
 }
 
 func Search(query string) (videoID string, err error) {
-	resp, err := http.Get("https://www.youtube.com/results?search_query=" + url.QueryEscape(query))
+	escaped := url.QueryEscape(strings.ToLower(strings.TrimSpace(query)))
+
+	cached, err := searchKS.Get(escaped)
+	if err == nil && cached != nil {
+		return *cached, nil
+	}
+
+	resp, err := http.Get("https://www.youtube.com/results?search_query=" + escaped)
 	if err != nil {
 		return
 	}
@@ -121,6 +133,9 @@ func Search(query string) (videoID string, err error) {
 		err = errors.New("no video found")
 		return
 	}
+
+	videoID = matches[0][1]
+	searchKS.Set(escaped, videoID, 11*time.Hour)
 
 	return matches[0][1], nil
 }

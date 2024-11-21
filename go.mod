@@ -1,9 +1,10 @@
 module github.com/birabittoh/disgord
 
-go 1.23
+go 1.23.2
 
 require (
 	github.com/FoxeiZ/dca v0.0.0-20240420115706-e4859a963796
+	github.com/birabittoh/myks v0.0.2
 	github.com/bwmarrin/discordgo v0.28.1
 	github.com/kkdai/youtube/v2 v2.10.1
 	golang.org/x/exp v0.0.0-20241108190413-2d47ceb2692f

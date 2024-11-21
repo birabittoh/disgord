@@ -2,6 +2,8 @@ github.com/FoxeiZ/dca v0.0.0-20240420115706-e4859a963796 h1:H8+3uNS2PWDRABx7QixG
 github.com/FoxeiZ/dca v0.0.0-20240420115706-e4859a963796/go.mod h1:+hXF1jadw9rDuEoyhAIMWH3acfzvPcqVQG6kKGqNrFY=
 github.com/Masterminds/semver/v3 v3.2.1 h1:RN9w6+7QoMeJVGyfmbcgs28Br8cvmnucEXnY0rYXWg0=
 github.com/Masterminds/semver/v3 v3.2.1/go.mod h1:qvl/7zhW3nngYb5+80sSMF+FG2BjYrf8m9wsX0PNOMQ=
+github.com/birabittoh/myks v0.0.2 h1:EBukMUsAflwiqdNo4LE7o2WQdEvawty5ewCZWY+IXSU=
+github.com/birabittoh/myks v0.0.2/go.mod h1:klNWaeUWm7TmhnBHBMt9vALwCHW11/Xw1BpCNkCx7hs=
 github.com/bitly/go-simplejson v0.5.1 h1:xgwPbetQScXt1gh9BmoJ6j9JMr3TElvuIyjR8pgdoow=
 github.com/bitly/go-simplejson v0.5.1/go.mod h1:YOPVLzCfwK14b4Sff3oP1AmGhI9T9Vsg84etUnlyp+Q=
 github.com/bwmarrin/discordgo v0.28.1 h1:gXsuo2GBO7NbR6uqmrrBDplPUx2T3nzu775q/Rd1aG4=
