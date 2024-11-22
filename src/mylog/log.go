@@ -84,30 +84,18 @@ func (l Logger) Fatalf(format string, v ...any) {
 }
 
 func (l Logger) Error(v ...any) {
-	if l.level < ERROR {
-		return
-	}
 	l.errorLogger.Println(v...)
 }
 
 func (l Logger) Errorf(format string, v ...any) {
-	if l.level < ERROR {
-		return
-	}
 	l.errorLogger.Printf(format, v...)
 }
 
 func (l Logger) Warn(v ...any) {
-	if l.level < WARN {
-		return
-	}
 	l.warnLogger.Println(v...)
 }
 
 func (l Logger) Warnf(format string, v ...any) {
-	if l.level < WARN {
-		return
-	}
 	l.warnLogger.Printf(format, v...)
 }
 

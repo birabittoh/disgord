@@ -39,15 +39,18 @@ func HandlePlay(args []string, s *discordgo.Session, m *discordgo.MessageCreate)
 		return gl.MsgError
 	}
 
+	// Get the queue for the guild
+	q := GetOrCreateQueue(voice)
+
 	// Get the video information
 	video, err := getVideo(args)
 	if err != nil {
 		logger.Errorf("could not get video: %v", err)
+		if q.nowPlaying == nil {
+			voice.Disconnect()
+		}
 		return gl.MsgError
 	}
-
-	// Get the queue for the guild
-	q := GetOrCreateQueue(voice)
 
 	// Add video to the queue
 	q.AddVideo(video)

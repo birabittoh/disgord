@@ -1,6 +1,6 @@
 module github.com/birabittoh/disgord
 
-go 1.23.2
+go 1.23.3
 
 require (
 	github.com/FoxeiZ/dca v0.0.0-20240420115706-e4859a963796

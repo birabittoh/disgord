@@ -51,7 +51,7 @@ func parseExpiration(url string) time.Duration {
 func getFromYT(videoID string) (video *youtube.Video, err error) {
 	url := "https://youtu.be/" + videoID
 
-	const maxRetries = 3
+	const maxRetries = 5
 	const maxBytesToCheck = 1024
 	var duration time.Duration
 
