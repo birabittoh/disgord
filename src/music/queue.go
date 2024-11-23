@@ -4,15 +4,15 @@ import (
 	"os"
 
 	"github.com/birabittoh/disgord/src/mylog"
+	"github.com/birabittoh/rabbitpipe"
 	"github.com/bwmarrin/discordgo"
-	"github.com/kkdai/youtube/v2"
 )
 
 var logger = mylog.NewLogger(os.Stdin, "music", mylog.DEBUG)
 
 type Queue struct {
-	nowPlaying  *youtube.Video
-	items       []*youtube.Video
+	nowPlaying  *rabbitpipe.Video
+	items       []*rabbitpipe.Video
 	audioStream *Audio
 	vc          *discordgo.VoiceConnection
 }
@@ -45,7 +45,7 @@ func GetQueue(guildID string) *Queue {
 }
 
 // AddVideo adds a new video to the queue
-func (q *Queue) AddVideo(video *youtube.Video) {
+func (q *Queue) AddVideo(video *rabbitpipe.Video) {
 	q.items = append(q.items, video)
 	if q.nowPlaying == nil {
 		q.PlayNext()
@@ -53,7 +53,7 @@ func (q *Queue) AddVideo(video *youtube.Video) {
 }
 
 // AddVideos adds a list of videos to the queue
-func (q *Queue) AddVideos(videos []*youtube.Video) {
+func (q *Queue) AddVideos(videos []*rabbitpipe.Video) {
 	q.items = append(q.items, videos...)
 	if q.nowPlaying == nil {
 		err := q.PlayNext()
@@ -79,7 +79,7 @@ func (q *Queue) PlayNext() (err error) {
 
 	format := getFormat(*q.nowPlaying)
 	if format == nil {
-		logger.Debug("no formats with audio channels available for video " + q.nowPlaying.ID)
+		logger.Debug("no formats with audio channels available for video " + q.nowPlaying.VideoID)
 		return q.PlayNext()
 	}
 
@@ -120,13 +120,13 @@ func (q *Queue) Resume() {
 
 // Clear clears the video queue
 func (q *Queue) Clear() {
-	q.items = []*youtube.Video{}
+	q.items = []*rabbitpipe.Video{}
 }
 
 // Videos returns all videos in the queue including the now playing one
-func (q *Queue) Videos() []*youtube.Video {
+func (q *Queue) Videos() []*rabbitpipe.Video {
 	if q.nowPlaying != nil {
-		return append([]*youtube.Video{q.nowPlaying}, q.items...)
+		return append([]*rabbitpipe.Video{q.nowPlaying}, q.items...)
 	}
 	return q.items
 }
@@ -143,6 +143,6 @@ func (q *Queue) VoiceConnection() *discordgo.VoiceConnection {
 	return q.vc
 }
 
-func (q *Queue) NowPlaying() *youtube.Video {
+func (q *Queue) NowPlaying() *rabbitpipe.Video {
 	return q.nowPlaying
 }

@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	gl "github.com/birabittoh/disgord/src/globals"
+	"github.com/birabittoh/rabbitpipe"
 	"github.com/bwmarrin/discordgo"
-	"github.com/kkdai/youtube/v2"
 )
 
 const (
@@ -21,7 +21,7 @@ const (
 	MsgQueueLine        = "%d. %s\n"
 )
 
-var yt = youtube.Client{}
+var yt = rabbitpipe.New()
 
 func HandlePlay(args []string, s *discordgo.Session, m *discordgo.MessageCreate) string {
 	r, _, vc := gl.GetVoiceChannelID(s, m)
