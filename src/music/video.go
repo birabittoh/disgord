@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	gl "github.com/birabittoh/disgord/src/globals"
 	"github.com/birabittoh/rabbitpipe"
 )
 
@@ -71,11 +70,26 @@ func getFromYT(videoID string) (video *rabbitpipe.Video, err error) {
 	return
 }
 
+func search(query string) (videoID string, err error) {
+	results, err := yt.Search(query)
+	if err == nil && results != nil {
+		for _, result := range *results {
+			if result.Type == "video" && !result.LiveNow && !result.IsUpcoming && !result.Premium {
+				logger.Printf("Video found by API.")
+
+				return result.VideoID, nil
+			}
+		}
+		err = errors.New("search did not return any valid videos")
+	}
+
+	return "", err
+}
+
 func getVideo(args []string) (*rabbitpipe.Video, error) {
 	videoID, err := extractVideoID(args[0])
 	if err != nil {
-		searchQuery := strings.Join(args, " ")
-		videoID, err = gl.Search(searchQuery)
+		videoID, err = search(strings.Join(args, " "))
 		if err != nil || videoID == "" {
 			return nil, err
 		}

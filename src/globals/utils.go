@@ -1,11 +1,7 @@
 package globals
 
 import (
-	"errors"
 	"fmt"
-	"io"
-	"net/http"
-	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -108,35 +104,4 @@ func SetPrefix(guildID, prefixValue string) string {
 		logger.Errorf("could not save config: %s", err)
 	}
 	return defaultPrefix
-}
-
-func Search(query string) (videoID string, err error) {
-	escaped := url.QueryEscape(strings.ToLower(strings.TrimSpace(query)))
-
-	cached, err := searchKS.Get(escaped)
-	if err == nil && cached != nil {
-		return *cached, nil
-	}
-
-	resp, err := http.Get("https://www.youtube.com/results?search_query=" + escaped)
-	if err != nil {
-		return
-	}
-	defer resp.Body.Close()
-
-	pageContent, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return
-	}
-
-	matches := searchPattern.FindAllStringSubmatch(string(pageContent), -1)
-	if len(matches) == 0 {
-		err = errors.New("no video found")
-		return
-	}
-
-	videoID = matches[0][1]
-	searchKS.Set(escaped, videoID, 11*time.Hour)
-
-	return matches[0][1], nil
 }

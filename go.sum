@@ -2,8 +2,8 @@ github.com/FoxeiZ/dca v0.0.0-20240420115706-e4859a963796 h1:H8+3uNS2PWDRABx7QixG
 github.com/FoxeiZ/dca v0.0.0-20240420115706-e4859a963796/go.mod h1:+hXF1jadw9rDuEoyhAIMWH3acfzvPcqVQG6kKGqNrFY=
 github.com/birabittoh/myks v0.0.2 h1:EBukMUsAflwiqdNo4LE7o2WQdEvawty5ewCZWY+IXSU=
 github.com/birabittoh/myks v0.0.2/go.mod h1:klNWaeUWm7TmhnBHBMt9vALwCHW11/Xw1BpCNkCx7hs=
-github.com/birabittoh/rabbitpipe v0.0.2 h1:4ptBS4Ai9NJH9gv3uG5TZBp1H5gfgEabEw6XldSjUx0=
-github.com/birabittoh/rabbitpipe v0.0.2/go.mod h1:6cEDb0WpwrRm2vt5IO3s2gPjzhZZLP7gYx+l9e3gx1k=
+github.com/birabittoh/rabbitpipe v0.0.4 h1:RxleMxwGy2Ikeu/sesV/PQ5NZmmdcS5oKnh0SZ1hNUA=
+github.com/birabittoh/rabbitpipe v0.0.4/go.mod h1:6cEDb0WpwrRm2vt5IO3s2gPjzhZZLP7gYx+l9e3gx1k=
 github.com/bwmarrin/discordgo v0.28.1 h1:gXsuo2GBO7NbR6uqmrrBDplPUx2T3nzu775q/Rd1aG4=
 github.com/bwmarrin/discordgo v0.28.1/go.mod h1:NJZpH+1AfhIcyQsPeuBKsUtYrRnjkyu0kIVMCHkZtRY=
 github.com/gorilla/websocket v1.4.2/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=

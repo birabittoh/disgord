@@ -21,7 +21,7 @@ const (
 	MsgQueueLine        = "%d. %s\n"
 )
 
-var yt = rabbitpipe.New()
+var yt = rabbitpipe.New("")
 
 func HandlePlay(args []string, s *discordgo.Session, m *discordgo.MessageCreate) string {
 	r, _, vc := gl.GetVoiceChannelID(s, m)
