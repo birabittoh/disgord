@@ -67,6 +67,8 @@ func main() {
 		logger.Fatalf("could not create bot session: %s", err)
 	}
 
+	music.Init(g.Config.Values.Instance)
+
 	src.InitHandlers()
 	session.AddHandler(messageHandler)
 	session.AddHandler(readyHandler)

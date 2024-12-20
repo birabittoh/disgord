@@ -1,6 +1,7 @@
 {
     "applicationId": "your-application-id-here",
     "token": "your-token-here",
+    "instance": "",
     "magazineSize": 3,
     "outros":
     [

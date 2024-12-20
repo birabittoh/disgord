@@ -4,17 +4,11 @@ import (
 	"errors"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/birabittoh/rabbitpipe"
 )
 
-const (
-	defaultCacheDuration = 6 * time.Hour
-)
-
 var (
-	expireRegex     = regexp.MustCompile(`(?i)expire=(\d+)`)
 	videoRegexpList = []*regexp.Regexp{ // from github.com/kkdai/youtube
 		regexp.MustCompile(`(?:v|embed|shorts|watch\?v)(?:=|/)([^"&?/=%]{11})`),
 		regexp.MustCompile(`(?:=|/)([^"&?/=%]{11})`),

@@ -29,6 +29,7 @@ type KeyValuePair struct {
 type MyConfig struct {
 	ApplicationID string `json:"applicationId"`
 	Token         string `json:"token"`
+	Instance      string `json:"instance"`
 
 	Prefixes []KeyValuePair `json:"prefixes"`
 	Outros   []KeyValuePair `json:"outros"`
