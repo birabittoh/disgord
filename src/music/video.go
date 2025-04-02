@@ -37,7 +37,7 @@ func extractVideoID(videoID string) (string, error) {
 	return videoID, nil
 }
 
-func getFormat(video rabbitpipe.Video) *rabbitpipe.AdaptiveFormat {
+func getFormat(video rabbitpipe.Video) *rabbitpipe.Format {
 	formats := video.AdaptiveFormats
 	for i, format := range formats {
 		if format.URL != "" && format.AudioChannels > 0 {

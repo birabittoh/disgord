@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM golang:1.23-alpine AS builder
+FROM golang:1.24-alpine AS builder
 
 
 WORKDIR /build
@@ -21,7 +21,7 @@ COPY src ./src
 
 # Build
 RUN commit_hash=$(cat commitID | cut -c1-7) && \
-    CGO_ENABLED=0 go build -ldflags "-X github.com/birabittoh/disgord/src/globals.CommitID=$commit_hash" -trimpath -o /dist/app
+    CGO_ENABLED=0 go build -ldflags "-X github.com/birabittoh/disgord/src/globals.CommitID=$commit_hash" -trimpath -o /dist/disgord
 
 
 # Test
@@ -36,4 +36,4 @@ RUN apk add --no-cache ffmpeg
 WORKDIR /app
 
 COPY --from=builder /dist .
-ENTRYPOINT ["./app"]
+ENTRYPOINT ["./disgord"]
