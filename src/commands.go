@@ -30,13 +30,13 @@ func InitHandlers() {
 		"shoot":  {ShortCode: "sh", Handler: shoot.HandleShoot, Help: "shoots a random user in your voice channel"},
 		"prefix": {Handler: handlePrefix, Help: "sets the bot's prefix for this server"},
 		"play":   {ShortCode: "p", Handler: music.HandlePlay, Help: "plays a song from youtube"},
-		"pause":  {ShortCode: "pa", Handler: music.HandlePause, Help: "pauses the current song"},
-		"resume": {ShortCode: "r", Handler: music.HandleResume, Help: "resumes the current song"},
 		"skip":   {ShortCode: "s", Handler: music.HandleSkip, Help: "skips the current song"},
 		"queue":  {ShortCode: "q", Handler: music.HandleQueue, Help: "shows the current queue"},
 		"clear":  {ShortCode: "c", Handler: music.HandleClear, Help: "clears the current queue"},
 		"leave":  {ShortCode: "l", Handler: music.HandleLeave, Help: "leaves the voice channel"},
 		"help":   {ShortCode: "h", Handler: handleHelp, Help: "shows this help message"},
+		//"pause":  {ShortCode: "pa", Handler: music.HandlePause, Help: "pauses the current song"},
+		//"resume": {ShortCode: "r", Handler: music.HandleResume, Help: "resumes the current song"},
 	}
 
 	for command, botCommand := range handlersMap {

@@ -25,6 +25,7 @@ var yt *rabbitpipe.Client
 
 func Init(instance string) {
 	yt = rabbitpipe.New(instance)
+
 }
 
 func HandlePlay(args []string, s *discordgo.Session, m *discordgo.MessageCreate) string {
@@ -50,7 +51,7 @@ func HandlePlay(args []string, s *discordgo.Session, m *discordgo.MessageCreate)
 	video, err := getVideo(args)
 	if err != nil {
 		logger.Errorf("could not get video: %v", err)
-		if q.nowPlaying == nil {
+		if q.nowPlaying == "" {
 			voice.Disconnect()
 		}
 		return gl.MsgError
@@ -61,6 +62,8 @@ func HandlePlay(args []string, s *discordgo.Session, m *discordgo.MessageCreate)
 
 	return fmt.Sprintf(MsgAddedToQueue, gl.FormatVideo(video))
 }
+
+/*
 
 func HandlePause(args []string, s *discordgo.Session, m *discordgo.MessageCreate) string {
 	r, g, vc := gl.GetVoiceChannelID(s, m)
@@ -102,6 +105,8 @@ func HandleResume(args []string, s *discordgo.Session, m *discordgo.MessageCreat
 	return MsgResumed
 }
 
+*/
+
 func HandleSkip(args []string, s *discordgo.Session, m *discordgo.MessageCreate) string {
 	r, g, vc := gl.GetVoiceChannelID(s, m)
 	if r != "" {
@@ -117,7 +122,7 @@ func HandleSkip(args []string, s *discordgo.Session, m *discordgo.MessageCreate)
 		return MsgSameVoiceChannel
 	}
 
-	err := q.PlayNext()
+	err := q.PlayNext(true)
 	if err != nil {
 		return MsgNothingIsPlaying
 	}
@@ -194,7 +199,7 @@ func HandleBotVSU(vsu *discordgo.VoiceStateUpdate) {
 		return
 	}
 
-	if queue.NowPlaying() == nil {
+	if queue.NowPlaying() == "" {
 		// song has ended naturally
 		return
 	}

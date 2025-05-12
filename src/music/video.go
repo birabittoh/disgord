@@ -4,8 +4,6 @@ import (
 	"errors"
 	"regexp"
 	"strings"
-
-	"github.com/birabittoh/rabbitpipe"
 )
 
 var (
@@ -37,33 +35,6 @@ func extractVideoID(videoID string) (string, error) {
 	return videoID, nil
 }
 
-func getFormat(video rabbitpipe.Video) *rabbitpipe.Format {
-	formats := video.AdaptiveFormats
-	for i, format := range formats {
-		if format.URL != "" && format.AudioChannels > 0 {
-			return &formats[i]
-		}
-	}
-
-	return nil
-}
-
-func getFromYT(videoID string) (video *rabbitpipe.Video, err error) {
-	video, err = yt.GetVideo(videoID)
-	if err != nil || video == nil {
-		logger.Error("Error fetching video info:", err)
-		return nil, errors.New("error fetching video info")
-	}
-
-	format := getFormat(*video)
-	if format == nil {
-		logger.Errorf("no audio formats available for video %s", videoID)
-		return nil, errors.New("no audio formats available")
-	}
-
-	return
-}
-
 func search(query string) (videoID string, err error) {
 	results, err := yt.Search(query)
 	if err == nil && results != nil {
@@ -80,14 +51,14 @@ func search(query string) (videoID string, err error) {
 	return "", err
 }
 
-func getVideo(args []string) (*rabbitpipe.Video, error) {
+func getVideo(args []string) (string, error) {
 	videoID, err := extractVideoID(args[0])
 	if err != nil {
 		videoID, err = search(strings.Join(args, " "))
 		if err != nil || videoID == "" {
-			return nil, err
+			return "", err
 		}
 	}
 
-	return getFromYT(videoID)
+	return "https://www.youtube.com/watch?v=" + videoID, nil
 }

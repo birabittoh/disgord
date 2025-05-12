@@ -4,15 +4,14 @@ import (
 	"os"
 
 	"github.com/birabittoh/disgord/src/mylog"
-	"github.com/birabittoh/rabbitpipe"
 	"github.com/bwmarrin/discordgo"
 )
 
 var logger = mylog.NewLogger(os.Stdin, "music", mylog.DEBUG)
 
 type Queue struct {
-	nowPlaying  *rabbitpipe.Video
-	items       []*rabbitpipe.Video
+	nowPlaying  string
+	items       []string
 	audioStream *Audio
 	vc          *discordgo.VoiceConnection
 }
@@ -45,18 +44,15 @@ func GetQueue(guildID string) *Queue {
 }
 
 // AddVideo adds a new video to the queue
-func (q *Queue) AddVideo(video *rabbitpipe.Video) {
-	q.items = append(q.items, video)
-	if q.nowPlaying == nil {
-		q.PlayNext()
-	}
+func (q *Queue) AddVideo(url string) {
+	q.AddVideos([]string{url})
 }
 
 // AddVideos adds a list of videos to the queue
-func (q *Queue) AddVideos(videos []*rabbitpipe.Video) {
+func (q *Queue) AddVideos(videos []string) {
 	q.items = append(q.items, videos...)
-	if q.nowPlaying == nil {
-		err := q.PlayNext()
+	if q.nowPlaying == "" {
+		err := q.PlayNext(false)
 		if err != nil {
 			logger.Error(err)
 		}
@@ -64,38 +60,38 @@ func (q *Queue) AddVideos(videos []*rabbitpipe.Video) {
 }
 
 // PlayNext starts playing the next video in the queue
-func (q *Queue) PlayNext() (err error) {
-	if q.audioStream != nil {
+func (q *Queue) PlayNext(skip bool) (err error) {
+	if q.audioStream != nil && q.audioStream.playing {
 		q.audioStream.Stop()
+
+		// If this is a manual skip, return early to avoid recursion
+		// The monitor callback will handle playing the next song
+		if skip {
+			return nil
+		}
 	}
 
 	if len(q.items) == 0 {
-		q.nowPlaying = nil
+		q.nowPlaying = ""
 		return q.vc.Disconnect()
 	}
 
 	q.nowPlaying = q.items[0]
 	q.items = q.items[1:]
 
-	format := getFormat(*q.nowPlaying)
-	if format == nil {
-		logger.Debug("no formats with audio channels available for video " + q.nowPlaying.VideoID)
-		return q.PlayNext()
-	}
-
-	q.audioStream, err = NewAudio(format.URL, q.vc)
+	q.audioStream, err = NewAudio(q.nowPlaying, q.vc)
 	if err != nil {
 		return
 	}
 
-	q.audioStream.Monitor(func() { q.PlayNext() })
+	q.audioStream.Monitor(func() { q.PlayNext(false) })
 	return
 }
 
 // Stop stops the player and clears the queue
 func (q *Queue) Stop() error {
 	q.Clear()
-	q.nowPlaying = nil
+	q.nowPlaying = ""
 
 	if q.audioStream != nil {
 		q.audioStream.Stop()
@@ -108,25 +104,15 @@ func (q *Queue) Stop() error {
 	return nil
 }
 
-// Pause pauses the player
-func (q *Queue) Pause() {
-	q.audioStream.Pause()
-}
-
-// Resume resumes the player
-func (q *Queue) Resume() {
-	q.audioStream.Resume()
-}
-
 // Clear clears the video queue
 func (q *Queue) Clear() {
-	q.items = []*rabbitpipe.Video{}
+	q.items = []string{}
 }
 
 // Videos returns all videos in the queue including the now playing one
-func (q *Queue) Videos() []*rabbitpipe.Video {
-	if q.nowPlaying != nil {
-		return append([]*rabbitpipe.Video{q.nowPlaying}, q.items...)
+func (q *Queue) Videos() []string {
+	if q.nowPlaying != "" {
+		return append([]string{q.nowPlaying}, q.items...)
 	}
 	return q.items
 }
@@ -143,6 +129,6 @@ func (q *Queue) VoiceConnection() *discordgo.VoiceConnection {
 	return q.vc
 }
 
-func (q *Queue) NowPlaying() *rabbitpipe.Video {
+func (q *Queue) NowPlaying() string {
 	return q.nowPlaying
 }

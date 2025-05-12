@@ -2,6 +2,7 @@
 
 FROM golang:1.24-alpine AS builder
 
+RUN apk add --no-cache build-base
 
 WORKDIR /build
 
@@ -21,7 +22,7 @@ COPY src ./src
 
 # Build
 RUN commit_hash=$(cat commitID | cut -c1-7) && \
-    CGO_ENABLED=0 go build -ldflags "-X github.com/birabittoh/disgord/src/globals.CommitID=$commit_hash" -trimpath -o /dist/disgord
+    go build -ldflags "-X github.com/birabittoh/disgord/src/globals.CommitID=$commit_hash" -trimpath -o /dist/disgord
 
 
 # Test
@@ -29,9 +30,9 @@ FROM builder AS run-test-stage
 # COPY i18n ./i18n
 RUN go test -v ./...
 
-FROM alpine AS build-release-stage
+FROM alpine:3 AS build-release-stage
 
-RUN apk add --no-cache ffmpeg
+RUN apk add --no-cache ffmpeg yt-dlp
 
 WORKDIR /app
 

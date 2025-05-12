@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/birabittoh/myks"
-	"github.com/birabittoh/rabbitpipe"
 	"github.com/bwmarrin/discordgo"
 )
 
@@ -54,9 +53,8 @@ func FormatCommand(command, guildID string) string {
 	return fmt.Sprintf("`%s%s`", GetPrefix(guildID), command)
 }
 
-func FormatVideo(v *rabbitpipe.Video) string {
-	duration := time.Duration(v.LengthSeconds) * time.Second
-	return fmt.Sprintf("**%s** (`%s`)", v.Title, duration.String())
+func FormatVideo(v string) string {
+	return v
 }
 
 func ParseUserMessage(messageContent, guildID string) (command string, args []string, ok bool) {
