@@ -15,7 +15,7 @@ const (
 	MsgPrefixSet      = "Prefix set to `%s`."
 	MsgPrefixTooLong  = "Prefix is too long."
 	MsgUsagePrefix    = "Usage: %s <new prefix>."
-	MsgHelp           = "**Bot commands:**\n%s"
+	MsgHelp           = "**Bot commands:**\n"
 	MsgHelpCommandFmt = "* %s\n"
 )
 
