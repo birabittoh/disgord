@@ -48,10 +48,22 @@ func HandlePlay(args []string, s *discordgo.Session, m *discordgo.MessageCreate)
 		return MsgNoURL
 	}
 
-	voice, err := s.ChannelVoiceJoin(*mainCtx, m.GuildID, vc, false, true)
-	if err != nil {
-		logger.Errorf("could not join voice channel: %v", err)
-		return gl.MsgError
+	var voice *discordgo.VoiceConnection
+	alreadyConnected := false
+	for _, vs := range s.VoiceConnections {
+		if vs.GuildID == m.GuildID {
+			voice = vs
+			alreadyConnected = true
+			break
+		}
+	}
+	if !alreadyConnected {
+		var err error
+		voice, err = s.ChannelVoiceJoin(*mainCtx, m.GuildID, vc, false, true)
+		if err != nil {
+			logger.Errorf("could not join voice channel: %v", err)
+			return gl.MsgError
+		}
 	}
 
 	// Get the queue for the guild
