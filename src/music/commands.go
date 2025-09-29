@@ -13,7 +13,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-const maxResultsAmount = 5
+const maxResultsAmount = 9
 
 var d *miri.Client
 
@@ -142,8 +142,14 @@ func HandleChoose(s *discordgo.Session, m *discordgo.MessageCreate) string {
 		return ""
 	}
 
-	if choice < 1 || choice > len(results) {
+	if choice < 0 || choice > len(results) {
 		return fmt.Sprintf(gl.MsgChoiceOutOfRange, len(results))
+	}
+
+	if choice == 0 {
+		// clear pending searches
+		delete(gl.PendingSearches, key)
+		return gl.MsgCanceled
 	}
 
 	track := &results[choice-1]
