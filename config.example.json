@@ -3,12 +3,5 @@
     "token": "your-token-here",
     "arlCookie": "your-arl-cookie-here",
     "secretKey": "your-secret-key-here",
-    "magazineSize": 3,
-    "outros":
-    [
-        { "name": "TheFatRat - Xenogenesis", "value": "https://www.youtube.com/watch?v=6N8zvi1VNSc" },
-        { "name": "OMFG - Hello", "value": "https://www.youtube.com/watch?v=5nYVNTX0Ib8" },
-        { "name": "Pegboard Nerds - Disconnected", "value": "https://www.youtube.com/watch?v=YdBtx8qG68w" },
-        { "name": "Gym Class Heroes - Stereo Hearts", "value": "https://www.youtube.com/watch?v=ThctmvQ3NGk" }
-    ]
+    "magazineSize": 3
 }

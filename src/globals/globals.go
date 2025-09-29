@@ -11,7 +11,7 @@ import (
 const (
 	MsgError            = "Something went wrong."
 	MsgNoResults        = "No results found."
-	MsgNoURL            = "Please, provide a YouTube URL."
+	MsgNoKeywords       = "Please, provide some keywords."
 	MsgAddedToQueue     = "Added to queue: %s."
 	MsgNothingIsPlaying = "Nothing is playing."
 	MsgSameVoiceChannel = "You need to be in the same voice channel to use this command."
@@ -45,7 +45,6 @@ type MyConfig struct {
 	SecretKey     string `json:"secretKey"`
 
 	Prefixes []KeyValuePair `json:"prefixes"`
-	Outros   []KeyValuePair `json:"outros"`
 	Radios   []KeyValuePair `json:"radios"`
 
 	MagazineSize uint `json:"magazineSize"`

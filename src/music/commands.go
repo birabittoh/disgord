@@ -34,7 +34,7 @@ func HandlePlay(args []string, s *discordgo.Session, m *discordgo.MessageCreate)
 	}
 
 	if len(args) == 0 {
-		return gl.MsgNoURL
+		return gl.MsgNoKeywords
 	}
 
 	var voice *discordgo.VoiceConnection
@@ -81,6 +81,32 @@ func HandlePlay(args []string, s *discordgo.Session, m *discordgo.MessageCreate)
 	q.AddTrack(track)
 
 	return fmt.Sprintf(gl.MsgAddedToQueue, gl.FormatTrack(track))
+}
+
+func HandleSearch(args []string, s *discordgo.Session, m *discordgo.MessageCreate) string {
+	q := strings.Join(args, " ")
+	if q == "" {
+		return gl.MsgNoKeywords
+	}
+
+	results, err := d.SearchTracks(*mainCtx, q)
+	if err != nil {
+		logger.Errorf("could not search track: %v", err)
+		return gl.MsgError
+	}
+
+	if len(results) == 0 {
+		return gl.MsgNoResults
+	}
+
+	var out string
+	maxResults := min(len(results), 5)
+	for i := 0; i < maxResults; i++ {
+		v := results[i]
+		duration := time.Duration(v.Duration) * time.Second
+		out += fmt.Sprintf(gl.MsgSearchLine, i+1, gl.FormatTrack(&v), duration.String())
+	}
+	return out
 }
 
 /*
