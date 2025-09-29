@@ -2,7 +2,6 @@ package music
 
 import (
 	"bufio"
-	"bytes"
 	"encoding/binary"
 	"io"
 	"log"
@@ -63,23 +62,27 @@ func NewAudio(track *miri.SongResult, vc *discordgo.VoiceConnection) (a *Audio, 
 }
 
 func (a *Audio) downloader(track *miri.SongResult) {
-	content, _, err := d.DownloadTrackByID(*mainCtx, strconv.Itoa(track.ID))
+	ffmpeg_cmd := exec.Command("ffmpeg", "-i", "pipe:0", "-f", "s16le", "-acodec", "pcm_s16le", "pipe:1")
+	ffmpegStdin, err := ffmpeg_cmd.StdinPipe()
 	if err != nil {
-		log.Println("Error downloading track:", err)
+		log.Println("Error creating ffmpeg stdin pipe:", err)
 		return
 	}
-
-	//cmd := exec.Command("yt-dlp", "-f", "251", "-o", "-", url)
-	ffmpeg_cmd := exec.Command("ffmpeg", "-i", "pipe:0", "-f", "s16le", "-acodec", "pcm_s16le", "pipe:1")
-	ffmpeg_cmd.Stdin = bytes.NewReader(content)
 	a.ffmpegStream, _ = ffmpeg_cmd.StdoutPipe()
 
-	// Start ffmpeg command
 	if err := ffmpeg_cmd.Start(); err != nil {
 		log.Println("Error starting ffmpeg command:", err)
 		return
 	}
 
+	// Stream track directly into ffmpeg's Stdin
+	go func() {
+		_, err := d.StreamTrackByID(*mainCtx, strconv.Itoa(track.ID), ffmpegStdin)
+		if err != nil {
+			log.Println("Error streaming track:", err)
+		}
+		ffmpegStdin.Close()
+	}()
 }
 
 func (a *Audio) reader() {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	gl "github.com/birabittoh/disgord/src/globals"
 	"github.com/birabittoh/miri"
@@ -21,6 +22,7 @@ func Init(ctx *context.Context) error {
 	if err != nil {
 		return err
 	}
+	cfg.Timeout = 30 * time.Minute // long timeout for music streaming
 	d, err = miri.New(*ctx, cfg)
 	return err
 }
