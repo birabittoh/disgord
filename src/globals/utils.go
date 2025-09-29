@@ -111,7 +111,7 @@ func EmbedMessage(content string) *discordgo.MessageSend {
 		Embeds: []*discordgo.MessageEmbed{
 			{
 				Description: content,
-				Color:       0x5865F2, // Discord blurple
+				Color:       defaultColor,
 			},
 		},
 	}

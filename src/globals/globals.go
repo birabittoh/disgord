@@ -34,6 +34,7 @@ const (
 
 	MsgHelpFmt     = "%s - _%s_"
 	defaultPrefix  = "$"
+	defaultColor   = 0xFF73A8
 	AlbumCoverSize = "xl" // "small", "medium", "big", "xl"
 )
 
