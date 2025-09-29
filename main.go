@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os"
 	"os/signal"
 
@@ -67,7 +68,9 @@ func main() {
 		logger.Fatalf("could not create bot session: %s", err)
 	}
 
-	music.Init(g.Config.Values.Instance)
+	ctx := context.Background()
+
+	music.Init(&ctx)
 
 	src.InitHandlers()
 	session.AddHandler(messageHandler)

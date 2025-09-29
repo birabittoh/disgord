@@ -1,10 +1,13 @@
 package music
 
 import (
+	"context"
 	"fmt"
+	"strings"
 
 	gl "github.com/birabittoh/disgord/src/globals"
-	"github.com/birabittoh/rabbitpipe"
+	"github.com/birabittoh/miri"
+	"github.com/birabittoh/miri/deezer"
 	"github.com/bwmarrin/discordgo"
 )
 
@@ -21,11 +24,18 @@ const (
 	MsgQueueLine        = "%d. %s\n"
 )
 
-var yt *rabbitpipe.Client
+var d *miri.Client
 
-func Init(instance string) {
-	yt = rabbitpipe.New(instance)
+var mainCtx *context.Context
 
+func Init(ctx *context.Context) error {
+	mainCtx = ctx
+	cfg, err := deezer.NewConfig(gl.Config.Values.ArlCookie, gl.Config.Values.SecretKey)
+	if err != nil {
+		return err
+	}
+	d, err = miri.New(*ctx, cfg)
+	return err
 }
 
 func HandlePlay(args []string, s *discordgo.Session, m *discordgo.MessageCreate) string {
@@ -38,29 +48,38 @@ func HandlePlay(args []string, s *discordgo.Session, m *discordgo.MessageCreate)
 		return MsgNoURL
 	}
 
-	voice, err := s.ChannelVoiceJoin(m.GuildID, vc, false, true)
+	voice, err := s.ChannelVoiceJoin(*mainCtx, m.GuildID, vc, false, true)
 	if err != nil {
 		logger.Errorf("could not join voice channel: %v", err)
 		return gl.MsgError
 	}
 
 	// Get the queue for the guild
-	q := GetOrCreateQueue(voice)
+	q := GetOrCreateQueue(voice, vc)
 
-	// Get the video information
-	video, err := getVideo(args)
+	query := strings.Join(args, " ")
+	results, err := d.SearchTracks(*mainCtx, query)
 	if err != nil {
-		logger.Errorf("could not get video: %v", err)
-		if q.nowPlaying == "" {
-			voice.Disconnect()
+		logger.Errorf("could not search track: %v", err)
+		if q.nowPlaying == nil {
+			voice.Disconnect(*mainCtx)
 		}
 		return gl.MsgError
 	}
 
-	// Add video to the queue
-	q.AddVideo(video)
+	if len(results) == 0 {
+		if q.nowPlaying == nil {
+			voice.Disconnect(*mainCtx)
+		}
+		return gl.MsgNoResults
+	}
 
-	return fmt.Sprintf(MsgAddedToQueue, gl.FormatVideo(video))
+	track := &results[0]
+
+	// Add track to the queue
+	q.AddTrack(track)
+
+	return fmt.Sprintf(MsgAddedToQueue, gl.FormatTrack(track))
 }
 
 /*
@@ -137,9 +156,9 @@ func HandleQueue(args []string, s *discordgo.Session, m *discordgo.MessageCreate
 	}
 
 	var out string
-	videos := q.Videos()
-	for i, v := range videos {
-		out += fmt.Sprintf(MsgQueueLine, i, gl.FormatVideo(v))
+	tracks := q.Tracks()
+	for i, v := range tracks {
+		out += fmt.Sprintf(MsgQueueLine, i, gl.FormatTrack(&v))
 	}
 	return out
 }
@@ -199,7 +218,7 @@ func HandleBotVSU(vsu *discordgo.VoiceStateUpdate) {
 		return
 	}
 
-	if queue.NowPlaying() == "" {
+	if queue.NowPlaying() == nil {
 		// song has ended naturally
 		return
 	}
@@ -209,7 +228,7 @@ func HandleBotVSU(vsu *discordgo.VoiceStateUpdate) {
 		return
 	}
 
-	if vsu.ChannelID == "" && vsu.BeforeUpdate.ChannelID == vc.ChannelID {
+	if vsu.ChannelID == "" && vsu.BeforeUpdate.ChannelID == queue.VoiceChannelID() {
 		logger.Println("Bot disconnected from voice channel, stopping audio playback.")
 		queue.Stop()
 	}

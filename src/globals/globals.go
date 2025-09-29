@@ -10,6 +10,7 @@ import (
 
 const (
 	MsgError      = "Something went wrong."
+	MsgNoResults  = "No results found."
 	MsgHelpFmt    = "%s - _%s_"
 	defaultPrefix = "$"
 )
@@ -29,7 +30,8 @@ type KeyValuePair struct {
 type MyConfig struct {
 	ApplicationID string `json:"applicationId"`
 	Token         string `json:"token"`
-	Instance      string `json:"instance"`
+	ArlCookie     string `json:"arlCookie"`
+	SecretKey     string `json:"secretKey"`
 
 	Prefixes []KeyValuePair `json:"prefixes"`
 	Outros   []KeyValuePair `json:"outros"`

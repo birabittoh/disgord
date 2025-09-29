@@ -2,17 +2,10 @@ package globals
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
-	"time"
 
-	"github.com/birabittoh/myks"
+	"github.com/birabittoh/miri"
 	"github.com/bwmarrin/discordgo"
-)
-
-var (
-	searchPattern = regexp.MustCompile(`watch\?v\x3d([a-zA-Z0-9_-]{11})`)
-	searchKS      = myks.New[string](12 * time.Hour)
 )
 
 func GetVoiceChannelID(s *discordgo.Session, m *discordgo.MessageCreate) (response string, g *discordgo.Guild, voiceChannelID string) {
@@ -53,8 +46,8 @@ func FormatCommand(command, guildID string) string {
 	return fmt.Sprintf("`%s%s`", GetPrefix(guildID), command)
 }
 
-func FormatVideo(v string) string {
-	return v
+func FormatTrack(v *miri.SongResult) string {
+	return fmt.Sprintf("_%s_ - %s", v.Artist.Name, v.Title)
 }
 
 func ParseUserMessage(messageContent, guildID string) (command string, args []string, ok bool) {

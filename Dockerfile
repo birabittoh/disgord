@@ -32,7 +32,7 @@ RUN go test -v ./...
 
 FROM alpine:3 AS build-release-stage
 
-RUN apk add --no-cache ffmpeg yt-dlp
+RUN apk add --no-cache ffmpeg
 
 WORKDIR /app
 

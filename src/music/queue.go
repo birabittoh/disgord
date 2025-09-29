@@ -4,33 +4,33 @@ import (
 	"os"
 
 	"github.com/birabittoh/disgord/src/mylog"
+	"github.com/birabittoh/miri"
 	"github.com/bwmarrin/discordgo"
 )
 
 var logger = mylog.NewLogger(os.Stdin, "music", mylog.DEBUG)
 
 type Queue struct {
-	nowPlaying  string
-	items       []string
+	nowPlaying  *miri.SongResult
+	items       []miri.SongResult
 	audioStream *Audio
 	vc          *discordgo.VoiceConnection
+	channelID   string
 }
 
 // queues stores all guild queues
 var queues = map[string]*Queue{}
 
 // GetOrCreateQueue fetches or creates a new queue for the guild
-func GetOrCreateQueue(vc *discordgo.VoiceConnection) (q *Queue) {
+func GetOrCreateQueue(vc *discordgo.VoiceConnection, channelID string) (q *Queue) {
 	q, ok := queues[vc.GuildID]
 	if !ok {
-		q = &Queue{vc: vc}
+		q = &Queue{}
 		queues[vc.GuildID] = q
-		return
 	}
 
-	if !q.vc.Ready {
-		q.vc = vc
-	}
+	q.vc = vc
+	q.channelID = channelID
 	return
 }
 
@@ -43,15 +43,15 @@ func GetQueue(guildID string) *Queue {
 	return nil
 }
 
-// AddVideo adds a new video to the queue
-func (q *Queue) AddVideo(url string) {
-	q.AddVideos([]string{url})
+// AddTrack adds a new track to the queue
+func (q *Queue) AddTrack(track *miri.SongResult) {
+	q.AddTracks([]miri.SongResult{*track})
 }
 
-// AddVideos adds a list of videos to the queue
-func (q *Queue) AddVideos(videos []string) {
-	q.items = append(q.items, videos...)
-	if q.nowPlaying == "" {
+// AddTracks adds a list of tracks to the queue
+func (q *Queue) AddTracks(tracks []miri.SongResult) {
+	q.items = append(q.items, tracks...)
+	if q.nowPlaying == nil {
 		err := q.PlayNext(false)
 		if err != nil {
 			logger.Error(err)
@@ -59,7 +59,7 @@ func (q *Queue) AddVideos(videos []string) {
 	}
 }
 
-// PlayNext starts playing the next video in the queue
+// PlayNext starts playing the next track in the queue
 func (q *Queue) PlayNext(skip bool) (err error) {
 	if q.audioStream != nil && q.audioStream.playing {
 		q.audioStream.Stop()
@@ -72,11 +72,11 @@ func (q *Queue) PlayNext(skip bool) (err error) {
 	}
 
 	if len(q.items) == 0 {
-		q.nowPlaying = ""
-		return q.vc.Disconnect()
+		q.nowPlaying = nil
+		return q.vc.Disconnect(*mainCtx)
 	}
 
-	q.nowPlaying = q.items[0]
+	q.nowPlaying = &q.items[0]
 	q.items = q.items[1:]
 
 	q.audioStream, err = NewAudio(q.nowPlaying, q.vc)
@@ -91,34 +91,34 @@ func (q *Queue) PlayNext(skip bool) (err error) {
 // Stop stops the player and clears the queue
 func (q *Queue) Stop() error {
 	q.Clear()
-	q.nowPlaying = ""
+	q.nowPlaying = nil
 
 	if q.audioStream != nil {
 		q.audioStream.Stop()
 	}
 
 	if q.vc != nil {
-		return q.vc.Disconnect()
+		return q.vc.Disconnect(*mainCtx)
 	}
 
 	return nil
 }
 
-// Clear clears the video queue
+// Clear clears the track queue
 func (q *Queue) Clear() {
-	q.items = []string{}
+	q.items = []miri.SongResult{}
 }
 
-// Videos returns all videos in the queue including the now playing one
-func (q *Queue) Videos() []string {
-	if q.nowPlaying != "" {
-		return append([]string{q.nowPlaying}, q.items...)
+// Tracks returns all tracks in the queue including the now playing one
+func (q *Queue) Tracks() []miri.SongResult {
+	if q.nowPlaying != nil {
+		return append([]miri.SongResult{*q.nowPlaying}, q.items...)
 	}
 	return q.items
 }
 
 func (q *Queue) VoiceChannelID() string {
-	return q.vc.ChannelID
+	return q.channelID
 }
 
 func (q *Queue) AudioStream() *Audio {
@@ -129,6 +129,6 @@ func (q *Queue) VoiceConnection() *discordgo.VoiceConnection {
 	return q.vc
 }
 
-func (q *Queue) NowPlaying() string {
+func (q *Queue) NowPlaying() *miri.SongResult {
 	return q.nowPlaying
 }

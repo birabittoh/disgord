@@ -1,7 +1,8 @@
 {
     "applicationId": "your-application-id-here",
     "token": "your-token-here",
-    "instance": "",
+    "arlCookie": "your-arl-cookie-here",
+    "secretKey": "your-secret-key-here",
     "magazineSize": 3,
     "outros":
     [

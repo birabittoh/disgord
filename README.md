@@ -5,7 +5,11 @@ A simple Discord bot in Go.
 Create your own application in the [Discord Developer Portal](https://discord.com/developers/applications).
 In the "Bot" tab, click on "Add Bot", then generate a new token.
 
-Now you can copy `config.example.json` into `config.json` and insert your Application ID and Discord Bot Token.
+Now you can copy `config.example.json` into `config.json` and insert the following:
+* `applicationId`: the ID of your bot.
+* `token`: get this from the [Discord Developer Portal](https://discord.com/developers/applications)
+* `arlCookie`: get this from your Deezer cookies when logged in
+* `secretKey`: you must find it on your own :P
 
 Your can use the following link to add your bot to a server (replace `<applicationId>` first):
 ```

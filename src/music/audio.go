@@ -2,11 +2,14 @@ package music
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/binary"
 	"io"
 	"log"
 	"os/exec"
+	"strconv"
 
+	"github.com/birabittoh/miri"
 	"github.com/bwmarrin/discordgo"
 	"layeh.com/gopus"
 )
@@ -30,7 +33,7 @@ var (
 	MaxBytes         int    = (AudioFrameSize * AudioChannels) * 2
 )
 
-func NewAudio(url string, vc *discordgo.VoiceConnection) (a *Audio, err error) {
+func NewAudio(track *miri.SongResult, vc *discordgo.VoiceConnection) (a *Audio, err error) {
 	a = &Audio{
 		playing:    true,
 		Done:       make(chan error),
@@ -51,7 +54,7 @@ func NewAudio(url string, vc *discordgo.VoiceConnection) (a *Audio, err error) {
 	a.opusEncoder.SetBitrate(AudioBitrate * 1000)
 	a.opusEncoder.SetApplication(gopus.Voip)
 
-	a.downloader(url)
+	a.downloader(track)
 	go a.reader()
 	go a.encoder()
 
@@ -59,17 +62,17 @@ func NewAudio(url string, vc *discordgo.VoiceConnection) (a *Audio, err error) {
 	return
 }
 
-func (a *Audio) downloader(url string) {
-	cmd := exec.Command("yt-dlp", "-f", "251", "-o", "-", url)
-	ffmpeg_cmd := exec.Command("ffmpeg", "-i", "pipe:0", "-f", "s16le", "-acodec", "pcm_s16le", "pipe:1")
-	ffmpeg_cmd.Stdin, _ = cmd.StdoutPipe()
-	a.ffmpegStream, _ = ffmpeg_cmd.StdoutPipe()
-
-	// Start yt-dlp command
-	if err := cmd.Start(); err != nil {
-		log.Println("Error starting yt-dlp command:", err)
+func (a *Audio) downloader(track *miri.SongResult) {
+	content, _, err := d.DownloadTrackByID(*mainCtx, strconv.Itoa(track.ID))
+	if err != nil {
+		log.Println("Error downloading track:", err)
 		return
 	}
+
+	//cmd := exec.Command("yt-dlp", "-f", "251", "-o", "-", url)
+	ffmpeg_cmd := exec.Command("ffmpeg", "-i", "pipe:0", "-f", "s16le", "-acodec", "pcm_s16le", "pipe:1")
+	ffmpeg_cmd.Stdin = bytes.NewReader(content)
+	a.ffmpegStream, _ = ffmpeg_cmd.StdoutPipe()
 
 	// Start ffmpeg command
 	if err := ffmpeg_cmd.Start(); err != nil {
