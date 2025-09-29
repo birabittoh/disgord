@@ -81,10 +81,17 @@ func main() {
 	session.AddHandler(messageHandler)
 	session.AddHandler(readyHandler)
 	session.AddHandler(vsuHandler)
+	src.AddSlashHandler(session)
 
 	err = session.Open()
 	if err != nil {
 		logger.Fatalf("could not open session: %s", err)
+	}
+
+	// Register slash commands
+	err = src.RegisterSlashCommands(session)
+	if err != nil {
+		logger.Errorf("could not register all slash commands: %s", err)
 	}
 
 	sigch := make(chan os.Signal, 1)

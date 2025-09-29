@@ -62,8 +62,17 @@ type MyConfig struct {
 	MagazineSize uint `json:"magazineSize"`
 }
 
+type SlashOption struct {
+	Name        string
+	Description string
+	Type        discordgo.ApplicationCommandOptionType
+	Required    bool
+}
+
 type BotCommand struct {
-	Handler   func([]string, *discordgo.Session, *discordgo.MessageCreate) string
-	ShortCode string
-	Help      string
+	Handler      func([]string, *discordgo.Session, *discordgo.MessageCreate) string
+	ShortCode    string
+	Help         string
+	SlashOptions []SlashOption // Slash command options
+	SlashOnly    bool          // If true, only available as slash command
 }
