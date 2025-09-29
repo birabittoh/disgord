@@ -5,6 +5,7 @@ import (
 
 	"github.com/birabittoh/disgord/src/myconfig"
 	"github.com/birabittoh/disgord/src/mylog"
+	"github.com/birabittoh/miri"
 	"github.com/bwmarrin/discordgo"
 )
 
@@ -15,20 +16,30 @@ const (
 	MsgAddedToQueue     = "Added to queue: %s."
 	MsgNothingIsPlaying = "Nothing is playing."
 	MsgSameVoiceChannel = "You need to be in the same voice channel to use this command."
+	MsgSearchLine       = "%d. %s (%s)\n"
+	MsgSearchHelp       = "\nTo pick a song, just type the number of your selection.\n"
+	MsgChoiceOutOfRange = "Choice out of range. Please pick a number between 1 and %d."
 	MsgPaused           = "Paused."
 	MsgResumed          = "Resumed."
 	MsgSkipped          = "Skipped."
 	MsgCleared          = "Cleared."
 	MsgLeft             = "Left."
 	MsgQueueLine        = "%d. %s\n"
+	MsgUnknownCommand   = "Unknown command: %s."
+	MsgPrefixSet        = "Prefix set to `%s`."
+	MsgPrefixTooLong    = "Prefix is too long."
+	MsgUsagePrefix      = "Usage: %s <new prefix>."
+	MsgHelp             = "**Bot commands:**\n"
+	MsgHelpCommandFmt   = "* %s\n"
 
 	MsgHelpFmt    = "%s - _%s_"
 	defaultPrefix = "$"
 )
 
 var (
-	CommitID string
-	Config   *myconfig.Config[MyConfig]
+	CommitID        string
+	Config          *myconfig.Config[MyConfig]
+	PendingSearches = map[string][]miri.SongResult{}
 
 	logger = mylog.NewLogger(os.Stdout, "main", mylog.DEBUG)
 )

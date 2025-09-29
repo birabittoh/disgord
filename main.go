@@ -29,7 +29,12 @@ func messageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 	if !ok {
-		return
+		// not a command
+		response = music.HandleChoose(s, m)
+		if response == "" {
+			// not a choose command
+			return
+		}
 	}
 	if response == "" {
 		logger.Debug("got empty response")

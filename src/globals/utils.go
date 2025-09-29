@@ -96,3 +96,7 @@ func SetPrefix(guildID, prefixValue string) string {
 	}
 	return defaultPrefix
 }
+
+func GetPendingSearchKey(m *discordgo.MessageCreate) string {
+	return m.ChannelID + ":" + m.Author.ID
+}

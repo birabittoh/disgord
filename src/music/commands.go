@@ -3,6 +3,7 @@ package music
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -11,6 +12,8 @@ import (
 	"github.com/birabittoh/miri/deezer"
 	"github.com/bwmarrin/discordgo"
 )
+
+const maxResultsAmount = 5
 
 var d *miri.Client
 
@@ -27,17 +30,7 @@ func Init(ctx *context.Context) error {
 	return err
 }
 
-func HandlePlay(args []string, s *discordgo.Session, m *discordgo.MessageCreate) string {
-	r, _, vc := gl.GetVoiceChannelID(s, m)
-	if r != "" {
-		return r
-	}
-
-	if len(args) == 0 {
-		return gl.MsgNoKeywords
-	}
-
-	var voice *discordgo.VoiceConnection
+func getVoiceConnection(vc string, s *discordgo.Session, m *discordgo.MessageCreate) (voice *discordgo.VoiceConnection, err error) {
 	alreadyConnected := false
 	for _, vs := range s.VoiceConnections {
 		if vs.GuildID == m.GuildID {
@@ -51,8 +44,26 @@ func HandlePlay(args []string, s *discordgo.Session, m *discordgo.MessageCreate)
 		voice, err = s.ChannelVoiceJoin(*mainCtx, m.GuildID, vc, false, true)
 		if err != nil {
 			logger.Errorf("could not join voice channel: %v", err)
-			return gl.MsgError
+			return nil, err
 		}
+	}
+
+	return voice, nil
+}
+
+func HandlePlay(args []string, s *discordgo.Session, m *discordgo.MessageCreate) string {
+	r, _, vc := gl.GetVoiceChannelID(s, m)
+	if r != "" {
+		return r
+	}
+
+	if len(args) == 0 {
+		return gl.MsgNoKeywords
+	}
+
+	voice, err := getVoiceConnection(vc, s, m)
+	if err != nil {
+		return err.Error()
 	}
 
 	// Get the queue for the guild
@@ -100,13 +111,63 @@ func HandleSearch(args []string, s *discordgo.Session, m *discordgo.MessageCreat
 	}
 
 	var out string
-	maxResults := min(len(results), 5)
-	for i := 0; i < maxResults; i++ {
+	maxResults := min(len(results), maxResultsAmount)
+	for i := range maxResults {
 		v := results[i]
 		duration := time.Duration(v.Duration) * time.Second
 		out += fmt.Sprintf(gl.MsgSearchLine, i+1, gl.FormatTrack(&v), duration.String())
 	}
+
+	out += gl.MsgSearchHelp
+
+	key := gl.GetPendingSearchKey(m)
+	gl.PendingSearches[key] = results[:maxResults]
+
 	return out
+}
+
+func HandleChoose(s *discordgo.Session, m *discordgo.MessageCreate) string {
+	if len(m.Content) > 1 { // change this if maxResultsAmount is > 9
+		return ""
+	}
+
+	choice, err := strconv.Atoi(m.Content)
+	if err != nil {
+		return ""
+	}
+
+	key := gl.GetPendingSearchKey(m)
+	results, found := gl.PendingSearches[key]
+	if !found || len(results) == 0 {
+		return ""
+	}
+
+	if choice < 1 || choice > len(results) {
+		return fmt.Sprintf(gl.MsgChoiceOutOfRange, len(results))
+	}
+
+	track := &results[choice-1]
+
+	r, _, vc := gl.GetVoiceChannelID(s, m)
+	if r != "" {
+		return r
+	}
+
+	voice, err := getVoiceConnection(vc, s, m)
+	if err != nil {
+		return err.Error()
+	}
+
+	// Get the queue for the guild
+	q := GetOrCreateQueue(voice, vc)
+
+	// Add track to the queue
+	q.AddTrack(track)
+
+	// Clear pending searches
+	delete(gl.PendingSearches, key)
+
+	return fmt.Sprintf(gl.MsgAddedToQueue, gl.FormatTrack(track))
 }
 
 /*

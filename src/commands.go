@@ -10,15 +10,6 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-const (
-	MsgUnknownCommand = "Unknown command: %s."
-	MsgPrefixSet      = "Prefix set to `%s`."
-	MsgPrefixTooLong  = "Prefix is too long."
-	MsgUsagePrefix    = "Usage: %s <new prefix>."
-	MsgHelp           = "**Bot commands:**\n"
-	MsgHelpCommandFmt = "* %s\n"
-)
-
 var (
 	handlersMap   map[string]gl.BotCommand
 	shortCommands = map[string]string{}
@@ -29,7 +20,8 @@ func InitHandlers() {
 		"echo":   {ShortCode: "e", Handler: handleEcho, Help: "echoes a message"},
 		"shoot":  {ShortCode: "sh", Handler: shoot.HandleShoot, Help: "shoots a random user in your voice channel"},
 		"prefix": {Handler: handlePrefix, Help: "sets the bot's prefix for this server"},
-		"play":   {ShortCode: "p", Handler: music.HandlePlay, Help: "plays a song from youtube"},
+		"play":   {ShortCode: "p", Handler: music.HandlePlay, Help: "plays a song"},
+		"search": {ShortCode: "f", Handler: music.HandleSearch, Help: "searches for a song"},
 		"skip":   {ShortCode: "s", Handler: music.HandleSkip, Help: "skips the current song"},
 		"queue":  {ShortCode: "q", Handler: music.HandleQueue, Help: "shows the current queue"},
 		"clear":  {ShortCode: "c", Handler: music.HandleClear, Help: "clears the current queue"},
@@ -60,7 +52,7 @@ func HandleCommand(s *discordgo.Session, m *discordgo.MessageCreate) (response s
 
 	botCommand, found := handlersMap[command]
 	if !found {
-		response = fmt.Sprintf(MsgUnknownCommand, gl.FormatCommand(command, m.GuildID))
+		response = fmt.Sprintf(gl.MsgUnknownCommand, gl.FormatCommand(command, m.GuildID))
 		return
 	}
 
@@ -74,24 +66,23 @@ func handleEcho(args []string, s *discordgo.Session, m *discordgo.MessageCreate)
 
 func handlePrefix(args []string, s *discordgo.Session, m *discordgo.MessageCreate) string {
 	if len(args) == 0 {
-		return fmt.Sprintf(MsgUsagePrefix, gl.FormatCommand("prefix", m.GuildID))
+		return fmt.Sprintf(gl.MsgUsagePrefix, gl.FormatCommand("prefix", m.GuildID))
 	}
 
 	newPrefix := args[0]
 	if len(newPrefix) > 10 {
-		return MsgPrefixTooLong
+		return gl.MsgPrefixTooLong
 	}
 
 	gl.SetPrefix(m.GuildID, newPrefix)
 
-	return fmt.Sprintf(MsgPrefixSet, newPrefix)
+	return fmt.Sprintf(gl.MsgPrefixSet, newPrefix)
 }
 
 func handleHelp(args []string, s *discordgo.Session, m *discordgo.MessageCreate) string {
-	helpText := MsgHelp
+	helpText := gl.MsgHelp
 	for command, botCommand := range handlersMap {
-		// helpText += fmt.Sprintf()
-		helpText += fmt.Sprintf(MsgHelpCommandFmt, botCommand.FormatHelp(command, m.GuildID))
+		helpText += fmt.Sprintf(gl.MsgHelpCommandFmt, botCommand.FormatHelp(command, m.GuildID))
 	}
 	return helpText
 }
