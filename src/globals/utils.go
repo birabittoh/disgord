@@ -8,13 +8,13 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-func GetVoiceChannelID(s *discordgo.Session, m *discordgo.MessageCreate) (response string, g *discordgo.Guild, voiceChannelID string) {
-	if m.Member == nil {
+func GetVoiceChannelID(s *discordgo.Session, member *discordgo.Member, guildID, authorID string) (response string, g *discordgo.Guild, voiceChannelID string) {
+	if member == nil {
 		response = "Please, use this inside a server."
 		return
 	}
 
-	g, err := s.State.Guild(m.GuildID)
+	g, err := s.State.Guild(guildID)
 	if err != nil {
 		logger.Errorf("could not get guild: %s", err)
 		response = MsgError
@@ -22,7 +22,7 @@ func GetVoiceChannelID(s *discordgo.Session, m *discordgo.MessageCreate) (respon
 	}
 
 	for _, vs := range g.VoiceStates {
-		if vs.UserID == m.Author.ID {
+		if vs.UserID == authorID {
 			voiceChannelID = vs.ChannelID
 			break
 		}
@@ -46,8 +46,12 @@ func FormatCommand(command, guildID string) string {
 	return fmt.Sprintf("`%s%s`", GetPrefix(guildID), command)
 }
 
-func FormatTrack(v *miri.SongResult) string {
+func FormatTrackLine(v *miri.SongResult) string {
 	return fmt.Sprintf("_%s_ - %s", v.Artist.Name, v.Title)
+}
+
+func FormatTrack(v *miri.SongResult) string {
+	return fmt.Sprintf("*%s*\n_%s_\n\n%s - ", v.Title, v.Artist.Name, v.Album.Title)
 }
 
 func ParseUserMessage(messageContent, guildID string) (command string, args []string, ok bool) {
@@ -97,6 +101,37 @@ func SetPrefix(guildID, prefixValue string) string {
 	return defaultPrefix
 }
 
-func GetPendingSearchKey(m *discordgo.MessageCreate) string {
-	return m.ChannelID + ":" + m.Author.ID
+func GetPendingSearchKey(channelID, authorID string) string {
+	return channelID + ":" + authorID
+}
+
+// EmbedMessage returns a MessageSend with a single embed and fixed color.
+func EmbedMessage(content string) *discordgo.MessageSend {
+	return &discordgo.MessageSend{
+		Embeds: []*discordgo.MessageEmbed{
+			{
+				Description: content,
+				Color:       0x5865F2, // Discord blurple
+			},
+		},
+	}
+}
+
+// EmbedTrackMessage returns a MessageSend with an embed and a cover image.
+func EmbedTrackMessage(content, coverURL string) *discordgo.MessageSend {
+	response := EmbedMessage(content)
+	response.Embeds[0].Thumbnail = &discordgo.MessageEmbedThumbnail{URL: coverURL}
+	return response
+}
+
+// EmbedToResponse converts a MessageSend to an InteractionResponse.
+func EmbedToResponse(msg *discordgo.MessageSend) *discordgo.InteractionResponse {
+	return &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Content:    msg.Content,
+			Components: msg.Components,
+			Embeds:     msg.Embeds,
+		},
+	}
 }

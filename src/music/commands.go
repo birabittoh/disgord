@@ -3,7 +3,6 @@ package music
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -30,10 +29,10 @@ func Init(ctx *context.Context) error {
 	return err
 }
 
-func getVoiceConnection(vc string, s *discordgo.Session, m *discordgo.MessageCreate) (voice *discordgo.VoiceConnection, err error) {
+func GetVoiceConnection(vc string, s *discordgo.Session, guildID string) (voice *discordgo.VoiceConnection, err error) {
 	alreadyConnected := false
 	for _, vs := range s.VoiceConnections {
-		if vs.GuildID == m.GuildID {
+		if vs.GuildID == guildID {
 			voice = vs
 			alreadyConnected = true
 			break
@@ -41,7 +40,7 @@ func getVoiceConnection(vc string, s *discordgo.Session, m *discordgo.MessageCre
 	}
 	if !alreadyConnected {
 		var err error
-		voice, err = s.ChannelVoiceJoin(*mainCtx, m.GuildID, vc, false, true)
+		voice, err = s.ChannelVoiceJoin(*mainCtx, guildID, vc, false, true)
 		if err != nil {
 			logger.Errorf("could not join voice channel: %v", err)
 			return nil, err
@@ -51,19 +50,19 @@ func getVoiceConnection(vc string, s *discordgo.Session, m *discordgo.MessageCre
 	return voice, nil
 }
 
-func HandlePlay(args []string, s *discordgo.Session, m *discordgo.MessageCreate) string {
-	r, _, vc := gl.GetVoiceChannelID(s, m)
+func HandlePlay(args []string, s *discordgo.Session, m *discordgo.MessageCreate) *discordgo.MessageSend {
+	r, _, vc := gl.GetVoiceChannelID(s, m.Member, m.GuildID, m.Author.ID)
 	if r != "" {
-		return r
+		return gl.EmbedMessage(r)
 	}
 
 	if len(args) == 0 {
-		return gl.MsgNoKeywords
+		return gl.EmbedMessage(gl.MsgNoKeywords)
 	}
 
-	voice, err := getVoiceConnection(vc, s, m)
+	voice, err := GetVoiceConnection(vc, s, m.GuildID)
 	if err != nil {
-		return err.Error()
+		return gl.EmbedMessage(err.Error())
 	}
 
 	// Get the queue for the guild
@@ -76,14 +75,14 @@ func HandlePlay(args []string, s *discordgo.Session, m *discordgo.MessageCreate)
 		if q.nowPlaying == nil {
 			voice.Disconnect(*mainCtx)
 		}
-		return gl.MsgError
+		return gl.EmbedMessage(gl.MsgError)
 	}
 
 	if len(results) == 0 {
 		if q.nowPlaying == nil {
 			voice.Disconnect(*mainCtx)
 		}
-		return gl.MsgNoResults
+		return gl.EmbedMessage(gl.MsgNoResults)
 	}
 
 	track := &results[0]
@@ -91,89 +90,63 @@ func HandlePlay(args []string, s *discordgo.Session, m *discordgo.MessageCreate)
 	// Add track to the queue
 	q.AddTrack(track)
 
-	return fmt.Sprintf(gl.MsgAddedToQueue, gl.FormatTrack(track))
+	coverURL := track.CoverURL(gl.AlbumCoverSize)
+	return gl.EmbedTrackMessage(gl.FormatTrack(track), coverURL)
 }
 
-func HandleSearch(args []string, s *discordgo.Session, m *discordgo.MessageCreate) string {
+func HandleSearch(args []string, s *discordgo.Session, m *discordgo.MessageCreate) *discordgo.MessageSend {
 	q := strings.Join(args, " ")
 	if q == "" {
-		return gl.MsgNoKeywords
+		return gl.EmbedMessage(gl.MsgNoKeywords)
 	}
 
 	results, err := d.SearchTracks(*mainCtx, q)
 	if err != nil {
 		logger.Errorf("could not search track: %v", err)
-		return gl.MsgError
+		return gl.EmbedMessage(gl.MsgError)
 	}
 
 	if len(results) == 0 {
-		return gl.MsgNoResults
+		return gl.EmbedMessage(gl.MsgNoResults)
 	}
 
-	var out string
 	maxResults := min(len(results), maxResultsAmount)
+	var out string
+	var buttons []discordgo.MessageComponent
+
 	for i := range maxResults {
 		v := results[i]
 		duration := time.Duration(v.Duration) * time.Second
-		out += fmt.Sprintf(gl.MsgSearchLine, i+1, gl.FormatTrack(&v), duration.String())
+		out += fmt.Sprintf(gl.MsgSearchLine, i+1, gl.FormatTrackLine(&v), duration.String())
+
+		buttons = append(buttons, discordgo.Button{
+			Label:    fmt.Sprintf("%d", i+1),
+			Style:    discordgo.PrimaryButton,
+			CustomID: fmt.Sprintf("choose_track_%d", i+1),
+		})
 	}
 
 	out += gl.MsgSearchHelp
 
-	key := gl.GetPendingSearchKey(m)
+	key := gl.GetPendingSearchKey(m.ChannelID, m.Author.ID)
 	gl.PendingSearches[key] = results[:maxResults]
 
-	return out
-}
-
-func HandleChoose(s *discordgo.Session, m *discordgo.MessageCreate) string {
-	if len(m.Content) > 1 { // change this if maxResultsAmount is > 9
-		return ""
+	// Split buttons into rows of max 5
+	var components []discordgo.MessageComponent
+	for i := 0; i < len(buttons); i += 5 {
+		end := i + 5
+		if end > len(buttons) {
+			end = len(buttons)
+		}
+		row := discordgo.ActionsRow{
+			Components: buttons[i:end],
+		}
+		components = append(components, row)
 	}
 
-	choice, err := strconv.Atoi(m.Content)
-	if err != nil {
-		return ""
-	}
-
-	key := gl.GetPendingSearchKey(m)
-	results, found := gl.PendingSearches[key]
-	if !found || len(results) == 0 {
-		return ""
-	}
-
-	if choice < 0 || choice > len(results) {
-		return fmt.Sprintf(gl.MsgChoiceOutOfRange, len(results))
-	}
-
-	if choice == 0 {
-		// clear pending searches
-		delete(gl.PendingSearches, key)
-		return gl.MsgCanceled
-	}
-
-	track := &results[choice-1]
-
-	r, _, vc := gl.GetVoiceChannelID(s, m)
-	if r != "" {
-		return r
-	}
-
-	voice, err := getVoiceConnection(vc, s, m)
-	if err != nil {
-		return err.Error()
-	}
-
-	// Get the queue for the guild
-	q := GetOrCreateQueue(voice, vc)
-
-	// Add track to the queue
-	q.AddTrack(track)
-
-	// Clear pending searches
-	delete(gl.PendingSearches, key)
-
-	return fmt.Sprintf(gl.MsgAddedToQueue, gl.FormatTrack(track))
+	msg := gl.EmbedMessage(out)
+	msg.Components = components
+	return msg
 }
 
 /*
@@ -220,84 +193,84 @@ func HandleResume(args []string, s *discordgo.Session, m *discordgo.MessageCreat
 
 */
 
-func HandleSkip(args []string, s *discordgo.Session, m *discordgo.MessageCreate) string {
-	r, g, vc := gl.GetVoiceChannelID(s, m)
+func HandleSkip(args []string, s *discordgo.Session, m *discordgo.MessageCreate) *discordgo.MessageSend {
+	r, g, vc := gl.GetVoiceChannelID(s, m.Member, m.GuildID, m.Author.ID)
 	if r != "" {
-		return r
+		return gl.EmbedMessage(r)
 	}
 
 	q := GetQueue(g.ID)
 	if q == nil {
-		return gl.MsgNothingIsPlaying
+		return gl.EmbedMessage(gl.MsgNothingIsPlaying)
 	}
 
 	if vc != q.VoiceChannelID() {
-		return gl.MsgSameVoiceChannel
+		return gl.EmbedMessage(gl.MsgSameVoiceChannel)
 	}
 
 	err := q.PlayNext(true)
 	if err != nil {
-		return gl.MsgNothingIsPlaying
+		return gl.EmbedMessage(gl.MsgNothingIsPlaying)
 	}
 
-	return gl.MsgSkipped
+	return gl.EmbedMessage(gl.MsgNothingIsPlaying)
 }
 
-func HandleQueue(args []string, s *discordgo.Session, m *discordgo.MessageCreate) string {
+func HandleQueue(args []string, s *discordgo.Session, m *discordgo.MessageCreate) *discordgo.MessageSend {
 	q := GetQueue(m.GuildID)
 	if q == nil {
-		return gl.MsgNothingIsPlaying
+		return gl.EmbedMessage(gl.MsgNothingIsPlaying)
 	}
 
 	var out string
 	tracks := q.Tracks()
 	for i, v := range tracks {
-		out += fmt.Sprintf(gl.MsgQueueLine, i, gl.FormatTrack(&v))
+		out += fmt.Sprintf(gl.MsgQueueLine, i, gl.FormatTrackLine(&v))
 	}
-	return out
+	return gl.EmbedMessage(out)
 }
 
-func HandleClear(args []string, s *discordgo.Session, m *discordgo.MessageCreate) string {
-	r, g, vc := gl.GetVoiceChannelID(s, m)
+func HandleClear(args []string, s *discordgo.Session, m *discordgo.MessageCreate) *discordgo.MessageSend {
+	r, g, vc := gl.GetVoiceChannelID(s, m.Member, m.GuildID, m.Author.ID)
 	if r != "" {
-		return r
+		return gl.EmbedMessage(r)
 	}
 
 	q := GetQueue(g.ID)
 	if q == nil {
-		return gl.MsgNothingIsPlaying
+		return gl.EmbedMessage(gl.MsgNothingIsPlaying)
 	}
 
 	if vc != q.VoiceChannelID() {
-		return gl.MsgSameVoiceChannel
+		return gl.EmbedMessage(gl.MsgSameVoiceChannel)
 	}
 
 	q.Clear()
 
-	return gl.MsgCleared
+	return gl.EmbedMessage(gl.MsgCleared)
 }
 
-func HandleLeave(args []string, s *discordgo.Session, m *discordgo.MessageCreate) string {
-	r, g, vc := gl.GetVoiceChannelID(s, m)
+func HandleLeave(args []string, s *discordgo.Session, m *discordgo.MessageCreate) *discordgo.MessageSend {
+	r, g, vc := gl.GetVoiceChannelID(s, m.Member, m.GuildID, m.Author.ID)
 	if r != "" {
-		return r
+		return gl.EmbedMessage(r)
 	}
 
 	q := GetQueue(g.ID)
 	if q == nil {
-		return gl.MsgNothingIsPlaying
+		return gl.EmbedMessage(gl.MsgNothingIsPlaying)
 	}
 
 	if vc != q.VoiceChannelID() {
-		return gl.MsgSameVoiceChannel
+		return gl.EmbedMessage(gl.MsgSameVoiceChannel)
 	}
 
 	err := q.Stop()
 	if err != nil {
-		return gl.MsgError
+		return gl.EmbedMessage(gl.MsgError)
 	}
 
-	return gl.MsgLeft
+	return gl.EmbedMessage(gl.MsgLeft)
 }
 
 func HandleBotVSU(vsu *discordgo.VoiceStateUpdate) {

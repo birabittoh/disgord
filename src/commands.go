@@ -41,8 +41,8 @@ func InitHandlers() {
 		"leave":  {ShortCode: "l", Handler: music.HandleLeave, Help: "leaves the voice channel"},
 		"shoot":  {ShortCode: "sh", Handler: shoot.HandleShoot, Help: "shoots a random user in your voice channel"},
 		"help":   {ShortCode: "h", Handler: handleHelp, Help: "shows this help message"},
-		//"pause":  {ShortCode: "pa", Handler: music.HandlePause, Help: "pauses the current song"},
-		//"resume": {ShortCode: "r", Handler: music.HandleResume, Help: "resumes the current song"},
+		// "pause":  {ShortCode: "pa", Handler: music.HandlePause, Help: "pauses the current song"},
+		// "resume": {ShortCode: "r", Handler: music.HandleResume, Help: "resumes the current song"},
 	}
 
 	for command, botCommand := range handlersMap {
@@ -53,7 +53,7 @@ func InitHandlers() {
 	}
 }
 
-func HandleCommand(s *discordgo.Session, m *discordgo.MessageCreate) (response string, ok bool, err error) {
+func HandleCommand(s *discordgo.Session, m *discordgo.MessageCreate) (response *discordgo.MessageSend, ok bool, err error) {
 	command, args, ok := gl.ParseUserMessage(m.Content, m.GuildID)
 	if !ok {
 		return
@@ -66,7 +66,7 @@ func HandleCommand(s *discordgo.Session, m *discordgo.MessageCreate) (response s
 
 	botCommand, found := handlersMap[command]
 	if !found {
-		response = fmt.Sprintf(gl.MsgUnknownCommand, gl.FormatCommand(command, m.GuildID))
+		response = gl.EmbedMessage(fmt.Sprintf(gl.MsgUnknownCommand, gl.FormatCommand(command, m.GuildID)))
 		return
 	}
 
@@ -74,29 +74,30 @@ func HandleCommand(s *discordgo.Session, m *discordgo.MessageCreate) (response s
 	return
 }
 
-func handleEcho(args []string, s *discordgo.Session, m *discordgo.MessageCreate) string {
-	return strings.Join(args, " ")
+func handleEcho(args []string, s *discordgo.Session, m *discordgo.MessageCreate) *discordgo.MessageSend {
+	return gl.EmbedMessage(strings.Join(args, " "))
 }
 
-func handlePrefix(args []string, s *discordgo.Session, m *discordgo.MessageCreate) string {
+func handlePrefix(args []string, s *discordgo.Session, m *discordgo.MessageCreate) *discordgo.MessageSend {
+	var content string
 	if len(args) == 0 {
-		return fmt.Sprintf(gl.MsgUsagePrefix, gl.FormatCommand("prefix", m.GuildID))
+		content = fmt.Sprintf(gl.MsgUsagePrefix, gl.FormatCommand("prefix", m.GuildID))
+	} else {
+		newPrefix := args[0]
+		if len(newPrefix) > 10 {
+			content = gl.MsgPrefixTooLong
+		} else {
+			gl.SetPrefix(m.GuildID, newPrefix)
+			content = fmt.Sprintf(gl.MsgPrefixSet, newPrefix)
+		}
 	}
-
-	newPrefix := args[0]
-	if len(newPrefix) > 10 {
-		return gl.MsgPrefixTooLong
-	}
-
-	gl.SetPrefix(m.GuildID, newPrefix)
-
-	return fmt.Sprintf(gl.MsgPrefixSet, newPrefix)
+	return gl.EmbedMessage(content)
 }
 
-func handleHelp(args []string, s *discordgo.Session, m *discordgo.MessageCreate) string {
+func handleHelp(args []string, s *discordgo.Session, m *discordgo.MessageCreate) *discordgo.MessageSend {
 	helpText := gl.MsgHelp
 	for command, botCommand := range handlersMap {
 		helpText += fmt.Sprintf(gl.MsgHelpCommandFmt, botCommand.FormatHelp(command, m.GuildID))
 	}
-	return helpText
+	return gl.EmbedMessage(helpText)
 }

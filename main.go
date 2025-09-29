@@ -30,20 +30,14 @@ func messageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 	if !ok {
 		// not a command
-		response = music.HandleChoose(s, m)
-		if response == "" {
-			// not a choose command
-			return
-		}
-	}
-	if response == "" {
-		logger.Debug("got empty response")
+		// not a choose command
 		return
 	}
-
-	_, err = s.ChannelMessageSend(m.ChannelID, response)
-	if err != nil {
-		logger.Errorf("could not send message: %s", err)
+	if response != nil {
+		_, err := s.ChannelMessageSendComplex(m.ChannelID, response)
+		if err != nil {
+			logger.Errorf("could not send message: %s", err)
+		}
 	}
 }
 
@@ -88,11 +82,12 @@ func main() {
 		logger.Fatalf("could not open session: %s", err)
 	}
 
-	// Register slash commands
-	err = src.RegisterSlashCommands(session)
-	if err != nil {
-		logger.Errorf("could not register all slash commands: %s", err)
-	}
+	go func() {
+		err := src.RegisterSlashCommands(session)
+		if err != nil {
+			logger.Errorf("could not register slash commands: %s", err)
+		}
+	}()
 
 	sigch := make(chan os.Signal, 1)
 	signal.Notify(sigch, os.Interrupt)

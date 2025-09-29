@@ -77,7 +77,7 @@ func (a *Audio) downloader(track *miri.SongResult) {
 
 	// Stream track directly into ffmpeg's Stdin
 	go func() {
-		_, err := d.StreamTrackByID(*mainCtx, strconv.Itoa(track.ID), ffmpegStdin)
+		err := d.StreamTrackByID(*mainCtx, strconv.Itoa(track.ID), ffmpegStdin)
 		if err != nil {
 			log.Println("Error streaming track:", err)
 		}

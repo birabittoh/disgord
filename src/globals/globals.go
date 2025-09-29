@@ -13,7 +13,6 @@ const (
 	MsgError            = "Something went wrong."
 	MsgNoResults        = "No results found."
 	MsgNoKeywords       = "Please, provide some keywords."
-	MsgAddedToQueue     = "Added to queue: %s."
 	MsgNothingIsPlaying = "Nothing is playing."
 	MsgSameVoiceChannel = "You need to be in the same voice channel to use this command."
 	MsgSearchLine       = "%d. %s (%s)\n"
@@ -33,8 +32,9 @@ const (
 	MsgHelp             = "**Bot commands:**\n"
 	MsgHelpCommandFmt   = "* %s\n"
 
-	MsgHelpFmt    = "%s - _%s_"
-	defaultPrefix = "$"
+	MsgHelpFmt     = "%s - _%s_"
+	defaultPrefix  = "$"
+	AlbumCoverSize = "xl" // "small", "medium", "big", "xl"
 )
 
 var (
@@ -70,7 +70,7 @@ type SlashOption struct {
 }
 
 type BotCommand struct {
-	Handler      func([]string, *discordgo.Session, *discordgo.MessageCreate) string
+	Handler      func([]string, *discordgo.Session, *discordgo.MessageCreate) *discordgo.MessageSend
 	ShortCode    string
 	Help         string
 	SlashOptions []SlashOption // Slash command options
