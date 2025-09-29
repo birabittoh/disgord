@@ -2,13 +2,13 @@ package shoot
 
 import (
 	"fmt"
+	"math/rand/v2"
 	"os"
 	"time"
 
 	gl "github.com/birabittoh/disgord/src/globals"
 	"github.com/birabittoh/disgord/src/mylog"
 	"github.com/bwmarrin/discordgo"
-	"golang.org/x/exp/rand"
 )
 
 var logger = mylog.NewLogger(os.Stdin, "shoot", mylog.DEBUG)
@@ -106,10 +106,10 @@ func HandleShoot(args []string, s *discordgo.Session, m *discordgo.MessageCreate
 	}
 
 	var victimID string
-	if rand.Intn(100) < bustProbability {
+	if rand.IntN(100) < bustProbability {
 		victimID = killerID
 	} else {
-		victimID = allMembers[rand.Intn(len(allMembers))]
+		victimID = allMembers[rand.IntN(len(allMembers))]
 	}
 
 	err = s.GuildMemberMove(m.GuildID, victimID, nil)
