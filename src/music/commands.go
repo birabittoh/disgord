@@ -11,19 +11,6 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-const (
-	MsgNoURL            = "Please, provide a YouTube URL."
-	MsgAddedToQueue     = "Added to queue: %s."
-	MsgNothingIsPlaying = "Nothing is playing."
-	MsgSameVoiceChannel = "You need to be in the same voice channel to use this command."
-	MsgPaused           = "Paused."
-	MsgResumed          = "Resumed."
-	MsgSkipped          = "Skipped."
-	MsgCleared          = "Cleared."
-	MsgLeft             = "Left."
-	MsgQueueLine        = "%d. %s\n"
-)
-
 var d *miri.Client
 
 var mainCtx *context.Context
@@ -45,7 +32,7 @@ func HandlePlay(args []string, s *discordgo.Session, m *discordgo.MessageCreate)
 	}
 
 	if len(args) == 0 {
-		return MsgNoURL
+		return gl.MsgNoURL
 	}
 
 	var voice *discordgo.VoiceConnection
@@ -91,7 +78,7 @@ func HandlePlay(args []string, s *discordgo.Session, m *discordgo.MessageCreate)
 	// Add track to the queue
 	q.AddTrack(track)
 
-	return fmt.Sprintf(MsgAddedToQueue, gl.FormatTrack(track))
+	return fmt.Sprintf(gl.MsgAddedToQueue, gl.FormatTrack(track))
 }
 
 /*
@@ -146,31 +133,31 @@ func HandleSkip(args []string, s *discordgo.Session, m *discordgo.MessageCreate)
 
 	q := GetQueue(g.ID)
 	if q == nil {
-		return MsgNothingIsPlaying
+		return gl.MsgNothingIsPlaying
 	}
 
 	if vc != q.VoiceChannelID() {
-		return MsgSameVoiceChannel
+		return gl.MsgSameVoiceChannel
 	}
 
 	err := q.PlayNext(true)
 	if err != nil {
-		return MsgNothingIsPlaying
+		return gl.MsgNothingIsPlaying
 	}
 
-	return MsgSkipped
+	return gl.MsgSkipped
 }
 
 func HandleQueue(args []string, s *discordgo.Session, m *discordgo.MessageCreate) string {
 	q := GetQueue(m.GuildID)
 	if q == nil {
-		return MsgNothingIsPlaying
+		return gl.MsgNothingIsPlaying
 	}
 
 	var out string
 	tracks := q.Tracks()
 	for i, v := range tracks {
-		out += fmt.Sprintf(MsgQueueLine, i, gl.FormatTrack(&v))
+		out += fmt.Sprintf(gl.MsgQueueLine, i, gl.FormatTrack(&v))
 	}
 	return out
 }
@@ -183,16 +170,16 @@ func HandleClear(args []string, s *discordgo.Session, m *discordgo.MessageCreate
 
 	q := GetQueue(g.ID)
 	if q == nil {
-		return MsgNothingIsPlaying
+		return gl.MsgNothingIsPlaying
 	}
 
 	if vc != q.VoiceChannelID() {
-		return MsgSameVoiceChannel
+		return gl.MsgSameVoiceChannel
 	}
 
 	q.Clear()
 
-	return MsgCleared
+	return gl.MsgCleared
 }
 
 func HandleLeave(args []string, s *discordgo.Session, m *discordgo.MessageCreate) string {
@@ -203,11 +190,11 @@ func HandleLeave(args []string, s *discordgo.Session, m *discordgo.MessageCreate
 
 	q := GetQueue(g.ID)
 	if q == nil {
-		return MsgNothingIsPlaying
+		return gl.MsgNothingIsPlaying
 	}
 
 	if vc != q.VoiceChannelID() {
-		return MsgSameVoiceChannel
+		return gl.MsgSameVoiceChannel
 	}
 
 	err := q.Stop()
@@ -215,7 +202,7 @@ func HandleLeave(args []string, s *discordgo.Session, m *discordgo.MessageCreate
 		return gl.MsgError
 	}
 
-	return MsgLeft
+	return gl.MsgLeft
 }
 
 func HandleBotVSU(vsu *discordgo.VoiceStateUpdate) {

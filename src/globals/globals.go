@@ -9,8 +9,19 @@ import (
 )
 
 const (
-	MsgError      = "Something went wrong."
-	MsgNoResults  = "No results found."
+	MsgError            = "Something went wrong."
+	MsgNoResults        = "No results found."
+	MsgNoURL            = "Please, provide a YouTube URL."
+	MsgAddedToQueue     = "Added to queue: %s."
+	MsgNothingIsPlaying = "Nothing is playing."
+	MsgSameVoiceChannel = "You need to be in the same voice channel to use this command."
+	MsgPaused           = "Paused."
+	MsgResumed          = "Resumed."
+	MsgSkipped          = "Skipped."
+	MsgCleared          = "Cleared."
+	MsgLeft             = "Left."
+	MsgQueueLine        = "%d. %s\n"
+
 	MsgHelpFmt    = "%s - _%s_"
 	defaultPrefix = "$"
 )
