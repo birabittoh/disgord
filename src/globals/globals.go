@@ -52,7 +52,7 @@ type KeyValuePair struct {
 }
 
 type MyConfig struct {
-	ApplicationID string `json:"applicationId"`
+	ApplicationID string `json:"applicationID"`
 	Token         string `json:"token"`
 	ArlCookie     string `json:"arlCookie"`
 	SecretKey     string `json:"secretKey"`

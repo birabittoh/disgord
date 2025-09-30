@@ -1,5 +1,5 @@
 {
-    "applicationId": "your-application-id-here",
+    "applicationID": "your-application-id-here",
     "token": "your-token-here",
     "arlCookie": "your-arl-cookie-here",
     "secretKey": "your-secret-key-here",
