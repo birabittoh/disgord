@@ -28,6 +28,7 @@ type Audio struct {
 	encodeChan   chan []int16
 	outputChan   chan []byte
 	ffmpegStream io.ReadCloser
+	ffmpegCmd    *exec.Cmd
 
 	ms *MusicService
 }
@@ -64,25 +65,22 @@ func NewAudio(track *miri.SongResult, vc *discordgo.VoiceConnection, ms *MusicSe
 }
 
 func (a *Audio) downloader(track *miri.SongResult) {
-	ffmpeg_cmd := exec.Command("ffmpeg", "-i", "pipe:0", "-f", "s16le", "-acodec", "pcm_s16le", "-ar", "48000", "-ac", "2", "pipe:1")
-	ffmpegStdin, err := ffmpeg_cmd.StdinPipe()
+	a.ffmpegCmd = exec.Command("ffmpeg", "-i", "pipe:0", "-f", "s16le", "-acodec", "pcm_s16le", "-ar", "48000", "-ac", "2", "pipe:1")
+	ffmpegStdin, err := a.ffmpegCmd.StdinPipe()
 	if err != nil {
 		a.ms.Logger.Error("Error creating ffmpeg stdin pipe:", err)
 		return
 	}
-	a.ffmpegStream, _ = ffmpeg_cmd.StdoutPipe()
+	a.ffmpegStream, _ = a.ffmpegCmd.StdoutPipe()
 
-	if err := ffmpeg_cmd.Start(); err != nil {
+	if err := a.ffmpegCmd.Start(); err != nil {
 		a.ms.Logger.Error("Error starting ffmpeg command:", err)
 		return
 	}
 
 	// Stream track directly into ffmpeg's Stdin
 	go func() {
-		err := a.ms.Client.StreamTrackByID(a.ms.Ctx, strconv.Itoa(track.ID), ffmpegStdin)
-		if err != nil {
-			a.ms.Logger.Error("Error streaming track:", err)
-		}
+		a.ms.Client.StreamTrackByID(a.ms.Ctx, strconv.Itoa(track.ID), ffmpegStdin)
 		ffmpegStdin.Close()
 	}()
 }
@@ -182,12 +180,32 @@ func (a *Audio) play_sound(vc *discordgo.VoiceConnection) (err error) {
 
 func (a *Audio) Stop() {
 	a.playing = false
+
+	// Close the ffmpeg stream
+	if a.ffmpegStream != nil {
+		a.ffmpegStream.Close()
+	}
+
+	// Kill the ffmpeg process if it's still running
+	if a.ffmpegCmd != nil && a.ffmpegCmd.Process != nil {
+		a.ffmpegCmd.Process.Kill()
+		a.ffmpegCmd.Wait() // Clean up zombie process
+	}
 }
 
 func (a *Audio) Monitor(onFinish func()) {
 	go func() {
 		if err := <-a.Done; err != nil {
 			a.ms.Logger.Errorf("Playback error: %v", err)
+		}
+
+		// Ensure cleanup happens even after normal playback
+		if a.ffmpegStream != nil {
+			a.ffmpegStream.Close()
+		}
+
+		if a.ffmpegCmd != nil && a.ffmpegCmd.Process != nil {
+			a.ffmpegCmd.Wait() // Wait for the process to finish
 		}
 
 		if onFinish != nil {
