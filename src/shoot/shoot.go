@@ -11,7 +11,10 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-var logger = mylog.NewLogger(os.Stdin, "shoot", gl.LogLevel)
+type ShootService struct {
+	logger    *mylog.Logger
+	magazines map[string]*Magazine
+}
 
 type Magazine struct {
 	size uint
@@ -19,7 +22,12 @@ type Magazine struct {
 	last time.Time
 }
 
-var magazines = map[string]*Magazine{}
+func NewShootService() *ShootService {
+	return &ShootService{
+		logger:    mylog.NewLogger(os.Stdin, "shoot", gl.LogLevel),
+		magazines: make(map[string]*Magazine),
+	}
+}
 
 func NewMagazine(size uint) *Magazine {
 	return &Magazine{size: size, left: size, last: time.Now()}
@@ -55,23 +63,23 @@ func (m *Magazine) String() string {
 	return fmt.Sprintf("_%d/%d bullets left in your magazine._", m.Left(), m.Size())
 }
 
-func GetMagazine(userID string) (q *Magazine) {
-	q, ok := magazines[userID]
+func (s *ShootService) GetMagazine(userID string) (q *Magazine) {
+	q, ok := s.magazines[userID]
 	if ok {
 		return
 	}
 
 	q = NewMagazine(gl.Config.Values.MagazineSize)
-	magazines[userID] = q
+	s.magazines[userID] = q
 	return
 }
 
-func HandleShoot(args []string, s *discordgo.Session, m *discordgo.MessageCreate) *discordgo.MessageSend {
+func (ss *ShootService) HandleShoot(args []string, s *discordgo.Session, m *discordgo.MessageCreate) *discordgo.MessageSend {
 	const bustProbability = 50
 
 	_, err := s.Guild(m.GuildID)
 	if err != nil {
-		logger.Errorf("could not update guild: %s", err)
+		ss.logger.Errorf("could not update guild: %s", err)
 		return gl.EmbedMessage(gl.MsgError)
 	}
 
@@ -86,7 +94,7 @@ func HandleShoot(args []string, s *discordgo.Session, m *discordgo.MessageCreate
 		if vs.ChannelID == voiceChannelID && vs.UserID != killerID {
 			member, err := s.State.Member(guild.ID, vs.UserID)
 			if err != nil {
-				logger.Errorf("could not get member info: %s", err)
+				ss.logger.Errorf("could not get member info: %s", err)
 				continue
 			}
 			if !member.User.Bot {
@@ -99,7 +107,7 @@ func HandleShoot(args []string, s *discordgo.Session, m *discordgo.MessageCreate
 		return gl.EmbedMessage("There is no one else to shoot in your voice channel.")
 	}
 
-	magazine := GetMagazine(killerID)
+	magazine := ss.GetMagazine(killerID)
 	if !magazine.Shoot() {
 		return gl.EmbedMessage("💨 Too bad... You're out of bullets.")
 	}
@@ -113,7 +121,7 @@ func HandleShoot(args []string, s *discordgo.Session, m *discordgo.MessageCreate
 
 	err = s.GuildMemberMove(m.GuildID, victimID, nil)
 	if err != nil {
-		logger.Errorf("could not kick user: %s", err)
+		ss.logger.Errorf("could not kick user: %s", err)
 		return gl.EmbedMessage("Failed to kick the user from the voice channel.")
 	}
 

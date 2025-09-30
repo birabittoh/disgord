@@ -29,7 +29,7 @@ func HandlersMap() map[string]gl.BotCommand {
 	return handlersMap
 }
 
-func InitHandlers(ms *music.MusicService) {
+func InitHandlers(ms *music.MusicService, ss *shoot.ShootService) {
 	handlersMap = map[string]gl.BotCommand{
 		"echo":   {ShortCode: "e", Handler: handleEcho, Help: "echoes a message", SlashOptions: input},
 		"prefix": {Handler: handlePrefix, Help: "sets the bot's prefix for this server", SlashOptions: input},
@@ -39,7 +39,7 @@ func InitHandlers(ms *music.MusicService) {
 		"queue":  {ShortCode: "q", Handler: ms.HandleQueue, Help: "shows the current queue"},
 		"clear":  {ShortCode: "c", Handler: ms.HandleClear, Help: "clears the current queue"},
 		"leave":  {ShortCode: "l", Handler: ms.HandleLeave, Help: "leaves the voice channel"},
-		"shoot":  {ShortCode: "sh", Handler: shoot.HandleShoot, Help: "shoots a random user in your voice channel"},
+		"shoot":  {ShortCode: "sh", Handler: ss.HandleShoot, Help: "shoots a random user in your voice channel"},
 		"help":   {ShortCode: "h", Handler: handleHelp, Help: "shows this help message"},
 		// "pause":  {ShortCode: "pa", Handler: music.HandlePause, Help: "pauses the current song"},
 		// "resume": {ShortCode: "r", Handler: music.HandleResume, Help: "resumes the current song"},

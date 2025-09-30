@@ -10,6 +10,7 @@ import (
 	"github.com/birabittoh/disgord/src/music"
 	"github.com/birabittoh/disgord/src/myconfig"
 	"github.com/birabittoh/disgord/src/mylog"
+	"github.com/birabittoh/disgord/src/shoot"
 	"github.com/bwmarrin/discordgo"
 )
 
@@ -70,13 +71,14 @@ func main() {
 
 	ctx := context.Background()
 
+	ss := shoot.NewShootService()
 	ms, err := music.NewMusicService(ctx)
 	if err != nil {
 		logger.Fatalf("could not initialize music service: %s", err)
 	}
 
 	// Pass ms to handlers as needed (to be updated in src/commands.go, etc.)
-	src.InitHandlers(ms)
+	src.InitHandlers(ms, ss)
 	session.AddHandler(messageHandler)
 	session.AddHandler(readyHandler)
 	session.AddHandler(func(s *discordgo.Session, vsu *discordgo.VoiceStateUpdate) { ms.HandleBotVSU(s, vsu) })
