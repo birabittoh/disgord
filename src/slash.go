@@ -96,11 +96,12 @@ func AddSlashHandler(session *discordgo.Session) {
 			if after, ok := strings.CutPrefix(customID, "choose_track_"); ok {
 				trackIdxStr := after
 				trackIdx, err := strconv.Atoi(trackIdxStr)
-				if err != nil || trackIdx < 1 {
+				if err != nil || trackIdx < 0 {
 					response := g.EmbedToResponse(g.EmbedMessage("Invalid track selection."))
 					s.InteractionRespond(i.Interaction, response)
 					return
 				}
+
 				key := g.GetPendingSearchKey(i.ChannelID, i.Member.User.ID)
 				results, found := g.PendingSearches[key]
 				if !found || trackIdx > len(results) {
@@ -108,6 +109,14 @@ func AddSlashHandler(session *discordgo.Session) {
 					s.InteractionRespond(i.Interaction, response)
 					return
 				}
+
+				if trackIdx == 0 {
+					// Cancel selection
+					delete(g.PendingSearches, key)
+					s.ChannelMessageDelete(i.ChannelID, i.Message.ID)
+					return
+				}
+
 				track := &results[trackIdx-1]
 				r, _, vc := g.GetVoiceChannelID(s, i.Member, i.GuildID, i.Member.User.ID)
 				if r != "" {
@@ -115,12 +124,14 @@ func AddSlashHandler(session *discordgo.Session) {
 					s.InteractionRespond(i.Interaction, response)
 					return
 				}
+
 				voice, err := music.GetVoiceConnection(vc, s, i.GuildID)
 				if err != nil {
 					response := g.EmbedToResponse(g.EmbedMessage(err.Error()))
 					s.InteractionRespond(i.Interaction, response)
 					return
 				}
+
 				q := music.GetOrCreateQueue(voice, vc)
 				q.AddTrack(track)
 				delete(g.PendingSearches, key)

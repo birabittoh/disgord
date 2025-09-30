@@ -3,6 +3,7 @@ package globals
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/birabittoh/miri"
 	"github.com/bwmarrin/discordgo"
@@ -47,11 +48,13 @@ func FormatCommand(command, guildID string) string {
 }
 
 func FormatTrackLine(v *miri.SongResult) string {
-	return fmt.Sprintf("_%s_ - %s", v.Artist.Name, v.Title)
+	duration := time.Duration(v.Duration) * time.Second
+	return fmt.Sprintf("_%s_ - **%s** (`%s`)", v.Artist.Name, v.Title, duration.String())
 }
 
 func FormatTrack(v *miri.SongResult) string {
-	return fmt.Sprintf("*%s*\n_%s_\n\n%s - ", v.Title, v.Artist.Name, v.Album.Title)
+	duration := time.Duration(v.Duration) * time.Second
+	return fmt.Sprintf("**%s** (`%s`)\n_%s_\n\n%s", v.Title, duration.String(), v.Artist.Name, v.Album.Title)
 }
 
 func ParseUserMessage(messageContent, guildID string) (command string, args []string, ok bool) {

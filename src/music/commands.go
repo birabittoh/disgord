@@ -116,8 +116,7 @@ func HandleSearch(args []string, s *discordgo.Session, m *discordgo.MessageCreat
 
 	for i := range maxResults {
 		v := results[i]
-		duration := time.Duration(v.Duration) * time.Second
-		out += fmt.Sprintf(gl.MsgSearchLine, i+1, gl.FormatTrackLine(&v), duration.String())
+		out += fmt.Sprintf(gl.MsgOrderedList, i+1, gl.FormatTrackLine(&v))
 
 		buttons = append(buttons, discordgo.Button{
 			Label:    fmt.Sprintf("%d", i+1),
@@ -125,6 +124,13 @@ func HandleSearch(args []string, s *discordgo.Session, m *discordgo.MessageCreat
 			CustomID: fmt.Sprintf("choose_track_%d", i+1),
 		})
 	}
+
+	// add cancel button
+	buttons = append(buttons, discordgo.Button{
+		Label:    "Cancel",
+		Style:    discordgo.DangerButton,
+		CustomID: "choose_track_0",
+	})
 
 	out += gl.MsgSearchHelp
 
@@ -134,10 +140,7 @@ func HandleSearch(args []string, s *discordgo.Session, m *discordgo.MessageCreat
 	// Split buttons into rows of max 5
 	var components []discordgo.MessageComponent
 	for i := 0; i < len(buttons); i += 5 {
-		end := i + 5
-		if end > len(buttons) {
-			end = len(buttons)
-		}
+		end := min(i+5, len(buttons))
 		row := discordgo.ActionsRow{
 			Components: buttons[i:end],
 		}
@@ -213,7 +216,7 @@ func HandleSkip(args []string, s *discordgo.Session, m *discordgo.MessageCreate)
 		return gl.EmbedMessage(gl.MsgNothingIsPlaying)
 	}
 
-	return gl.EmbedMessage(gl.MsgNothingIsPlaying)
+	return gl.EmbedMessage(gl.MsgSkipped)
 }
 
 func HandleQueue(args []string, s *discordgo.Session, m *discordgo.MessageCreate) *discordgo.MessageSend {
@@ -225,7 +228,7 @@ func HandleQueue(args []string, s *discordgo.Session, m *discordgo.MessageCreate
 	var out string
 	tracks := q.Tracks()
 	for i, v := range tracks {
-		out += fmt.Sprintf(gl.MsgQueueLine, i, gl.FormatTrackLine(&v))
+		out += fmt.Sprintf(gl.MsgOrderedList, i, gl.FormatTrackLine(&v))
 	}
 	return gl.EmbedMessage(out)
 }
