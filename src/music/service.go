@@ -79,9 +79,26 @@ func (ms *MusicService) GetOrCreateQueue(vc *discordgo.VoiceConnection, channelI
 func (ms *MusicService) GetQueue(guildID string) *Queue {
 	q, ok := ms.Queues[guildID]
 	if ok {
+		if q.nowPlaying == nil && len(q.items) == 0 {
+			// clean up empty queue
+			delete(ms.Queues, guildID)
+			return nil
+		}
 		return q
 	}
 	return nil
+}
+
+func (ms *MusicService) DeleteQueue(guildID string) {
+	q, exists := ms.Queues[guildID]
+	if !exists {
+		return
+	}
+
+	ms.Logger.Debugf("Deleting queue for guild %s", guildID)
+
+	q.Stop()
+	delete(ms.Queues, guildID)
 }
 
 func (ms *MusicService) HandleBotVSU(s *discordgo.Session, vsu *discordgo.VoiceStateUpdate) {
@@ -101,6 +118,8 @@ func (ms *MusicService) HandleBotVSU(s *discordgo.Session, vsu *discordgo.VoiceS
 		return
 	}
 
+	defer ms.DeleteQueue(vsu.GuildID)
+
 	if queue.NowPlaying() == nil {
 		// song has ended naturally
 		return
@@ -113,6 +132,6 @@ func (ms *MusicService) HandleBotVSU(s *discordgo.Session, vsu *discordgo.VoiceS
 
 	if vsu.ChannelID == "" && vsu.BeforeUpdate.ChannelID == queue.VoiceChannelID() {
 		ms.Logger.Println("Bot disconnected from voice channel, stopping audio playback.")
-		queue.Stop()
+		// DeleteQueue will be called in defer
 	}
 }

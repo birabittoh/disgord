@@ -179,10 +179,6 @@ func (ms *MusicService) HandleLeave(args []string, s *discordgo.Session, m *disc
 		return gl.EmbedMessage(gl.MsgSameVoiceChannel)
 	}
 
-	err := q.Stop()
-	if err != nil {
-		return gl.EmbedMessage(gl.MsgError)
-	}
-
+	ms.DeleteQueue(g.ID)
 	return gl.EmbedMessage(gl.MsgLeft)
 }

@@ -65,7 +65,14 @@ func NewAudio(track *miri.SongResult, vc *discordgo.VoiceConnection, ms *MusicSe
 }
 
 func (a *Audio) downloader(track *miri.SongResult) {
-	a.ffmpegCmd = exec.Command("ffmpeg", "-i", "pipe:0", "-f", "s16le", "-acodec", "pcm_s16le", "-ar", "48000", "-ac", "2", "pipe:1")
+	a.ffmpegCmd = exec.Command(
+		"ffmpeg",
+		"-i", "pipe:0",
+		"-f", "s16le",
+		"-acodec", "pcm_s16le",
+		"-ar", strconv.Itoa(AudioFrameRate),
+		"-ac", strconv.Itoa(AudioChannels),
+		"pipe:1")
 	ffmpegStdin, err := a.ffmpegCmd.StdinPipe()
 	if err != nil {
 		a.ms.Logger.Error("Error creating ffmpeg stdin pipe:", err)

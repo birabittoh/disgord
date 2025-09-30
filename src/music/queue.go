@@ -32,6 +32,10 @@ func (q *Queue) AddTracks(ms *MusicService, tracks []miri.SongResult) {
 }
 
 func (q *Queue) PlayNext(ms *MusicService, skip bool) (err error) {
+	if q.vc == nil || q.ctx == nil {
+		return
+	}
+
 	if q.audioStream != nil && q.audioStream.playing {
 		q.audioStream.Stop()
 		if skip {
@@ -39,10 +43,7 @@ func (q *Queue) PlayNext(ms *MusicService, skip bool) (err error) {
 		}
 	}
 	if len(q.items) == 0 {
-		q.nowPlaying = nil
-		if q.vc != nil && q.ctx != nil {
-			return q.vc.Disconnect(q.ctx)
-		}
+		ms.DeleteQueue(q.vc.GuildID)
 		return nil
 	}
 	q.nowPlaying = &q.items[0]
@@ -55,20 +56,17 @@ func (q *Queue) PlayNext(ms *MusicService, skip bool) (err error) {
 	return
 }
 
-func (q *Queue) Stop() error {
+func (q *Queue) Stop() {
 	q.Clear()
-	q.nowPlaying = nil
 	if q.audioStream != nil {
 		q.audioStream.Stop()
 		q.audioStream = nil // Clear the stale audio stream
 	}
+	q.nowPlaying = nil
 	if q.vc != nil && q.ctx != nil {
-		err := q.vc.Disconnect(q.ctx)
-		q.vc = nil // Clear the stale connection
-		return err
+		q.vc.Disconnect(q.ctx)
 	}
-	q.vc = nil
-	return nil
+	q.vc = nil // Clear the stale connection
 }
 
 func (q *Queue) Clear() {
