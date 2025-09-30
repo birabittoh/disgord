@@ -13,10 +13,11 @@ import (
 )
 
 type MusicService struct {
-	Ctx    context.Context
-	Client *miri.Client
-	Logger *mylog.Logger
-	Queues map[string]*Queue
+	Ctx      context.Context
+	Client   *miri.Client
+	Logger   *mylog.Logger
+	Queues   map[string]*Queue
+	Searches map[string][]miri.SongResult
 }
 
 func NewMusicService(ctx context.Context) (*MusicService, error) {
@@ -29,12 +30,13 @@ func NewMusicService(ctx context.Context) (*MusicService, error) {
 	if err != nil {
 		return nil, err
 	}
-	logger := mylog.NewLogger(os.Stdout, "music", mylog.DEBUG)
+	logger := mylog.NewLogger(os.Stdout, "music", gl.LogLevel)
 	return &MusicService{
-		Ctx:    ctx,
-		Client: client,
-		Logger: logger,
-		Queues: make(map[string]*Queue),
+		Ctx:      ctx,
+		Client:   client,
+		Logger:   logger,
+		Queues:   make(map[string]*Queue),
+		Searches: make(map[string][]miri.SongResult),
 	}, nil
 }
 

@@ -90,7 +90,7 @@ func (ms *MusicService) HandleSearch(args []string, s *discordgo.Session, m *dis
 	out += gl.MsgSearchHelp
 
 	key := gl.GetPendingSearchKey(m.ChannelID, m.Author.ID)
-	gl.PendingSearches[key] = results[:maxResults]
+	ms.Searches[key] = results[:maxResults]
 
 	// Split buttons into rows of max 5
 	var components []discordgo.MessageComponent

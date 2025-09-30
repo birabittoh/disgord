@@ -6,14 +6,14 @@ import (
 	"os/signal"
 
 	"github.com/birabittoh/disgord/src"
-	g "github.com/birabittoh/disgord/src/globals"
+	gl "github.com/birabittoh/disgord/src/globals"
 	"github.com/birabittoh/disgord/src/music"
 	"github.com/birabittoh/disgord/src/myconfig"
 	"github.com/birabittoh/disgord/src/mylog"
 	"github.com/bwmarrin/discordgo"
 )
 
-var logger = mylog.NewLogger(os.Stdout, "init", mylog.DEBUG)
+var logger = mylog.NewLogger(os.Stdout, "init", gl.LogLevel)
 
 func messageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 	if m.Author.ID == s.State.User.ID {
@@ -56,14 +56,14 @@ func readyHandler(s *discordgo.Session, r *discordgo.Ready) {
 }
 
 func main() {
-	logger.Info("Starting bot... Commit " + g.CommitID)
+	logger.Info("Starting bot... Commit " + gl.CommitID)
 	var err error
-	g.Config, err = myconfig.New[g.MyConfig]("config.json")
+	gl.Config, err = myconfig.New[gl.MyConfig]("config.json")
 	if err != nil {
 		logger.Errorf("could not load config: %s", err)
 	}
 
-	session, err := discordgo.New("Bot " + g.Config.Values.Token)
+	session, err := discordgo.New("Bot " + gl.Config.Values.Token)
 	if err != nil {
 		logger.Fatalf("could not create bot session: %s", err)
 	}

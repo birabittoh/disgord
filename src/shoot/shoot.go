@@ -11,7 +11,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-var logger = mylog.NewLogger(os.Stdin, "shoot", mylog.DEBUG)
+var logger = mylog.NewLogger(os.Stdin, "shoot", gl.LogLevel)
 
 type Magazine struct {
 	size uint

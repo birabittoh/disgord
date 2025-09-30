@@ -5,7 +5,6 @@ import (
 
 	"github.com/birabittoh/disgord/src/myconfig"
 	"github.com/birabittoh/disgord/src/mylog"
-	"github.com/birabittoh/miri"
 	"github.com/bwmarrin/discordgo"
 )
 
@@ -36,14 +35,15 @@ const (
 	defaultColor     = 0xFF73A8
 	AlbumCoverSize   = "xl" // "small", "medium", "big", "xl"
 	MaxSearchResults = 5
+
+	LogLevel = mylog.DEBUG
 )
 
 var (
-	CommitID        string
-	Config          *myconfig.Config[MyConfig]
-	PendingSearches = map[string][]miri.SongResult{}
+	CommitID string
+	Config   *myconfig.Config[MyConfig]
 
-	logger = mylog.NewLogger(os.Stdout, "main", mylog.DEBUG)
+	logger = mylog.NewLogger(os.Stdout, "globals", LogLevel)
 )
 
 type KeyValuePair struct {

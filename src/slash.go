@@ -8,11 +8,11 @@ import (
 	"github.com/birabittoh/disgord/src/music"
 	"github.com/birabittoh/disgord/src/mylog"
 
-	g "github.com/birabittoh/disgord/src/globals"
+	gl "github.com/birabittoh/disgord/src/globals"
 	"github.com/bwmarrin/discordgo"
 )
 
-var logger = mylog.NewLogger(nil, "main", mylog.DEBUG)
+var logger = mylog.NewLogger(nil, "main", gl.LogLevel)
 
 /*
 RegisterSlashCommands efficiently registers all commands in handlersMap as Discord slash commands.
@@ -62,7 +62,7 @@ func RegisterSlashCommands(session *discordgo.Session) error {
 			}
 		}
 		if found == nil {
-			created, err := session.ApplicationCommandCreate(g.Config.Values.ApplicationID, "", desiredCmd)
+			created, err := session.ApplicationCommandCreate(gl.Config.Values.ApplicationID, "", desiredCmd)
 			if err != nil {
 				return err
 			}
@@ -80,7 +80,7 @@ func RegisterSlashCommands(session *discordgo.Session) error {
 				}
 			}
 			if changed {
-				updated, err := session.ApplicationCommandEdit(g.Config.Values.ApplicationID, "", found.ID, desiredCmd)
+				updated, err := session.ApplicationCommandEdit(gl.Config.Values.ApplicationID, "", found.ID, desiredCmd)
 				if err != nil {
 					return err
 				}
@@ -100,48 +100,48 @@ func AddSlashHandler(session *discordgo.Session, musicService *music.MusicServic
 				trackIdxStr := after
 				trackIdx, err := strconv.Atoi(trackIdxStr)
 				if err != nil || trackIdx < 0 {
-					response := g.EmbedToResponse(g.EmbedMessage("Invalid track selection."))
+					response := gl.EmbedToResponse(gl.EmbedMessage("Invalid track selection."))
 					s.InteractionRespond(i.Interaction, response)
 					return
 				}
 
-				key := g.GetPendingSearchKey(i.ChannelID, i.Member.User.ID)
-				results, found := g.PendingSearches[key]
+				key := gl.GetPendingSearchKey(i.ChannelID, i.Member.User.ID)
+				results, found := musicService.Searches[key]
 				if !found || trackIdx > len(results) {
-					response := g.EmbedToResponse(g.EmbedMessage("Track not found."))
+					response := gl.EmbedToResponse(gl.EmbedMessage("Track not found."))
 					s.InteractionRespond(i.Interaction, response)
 					return
 				}
 
 				if trackIdx == 0 {
 					// Cancel selection
-					delete(g.PendingSearches, key)
+					delete(musicService.Searches, key)
 					s.ChannelMessageDelete(i.ChannelID, i.Message.ID)
 					return
 				}
 
 				track := &results[trackIdx-1]
-				r, _, vc := g.GetVoiceChannelID(s, i.Member, i.GuildID, i.Member.User.ID)
+				r, _, vc := gl.GetVoiceChannelID(s, i.Member, i.GuildID, i.Member.User.ID)
 				if r != "" {
-					response := g.EmbedToResponse(g.EmbedMessage(r))
+					response := gl.EmbedToResponse(gl.EmbedMessage(r))
 					s.InteractionRespond(i.Interaction, response)
 					return
 				}
 
 				voice, err := musicService.GetVoiceConnection(vc, s, i.GuildID)
 				if err != nil {
-					response := g.EmbedToResponse(g.EmbedMessage(err.Error()))
+					response := gl.EmbedToResponse(gl.EmbedMessage(err.Error()))
 					s.InteractionRespond(i.Interaction, response)
 					return
 				}
 
 				q := musicService.GetOrCreateQueue(voice, vc)
 				q.AddTrack(musicService, track)
-				delete(g.PendingSearches, key)
+				delete(musicService.Searches, key)
 				defer s.ChannelMessageDelete(i.ChannelID, i.Message.ID)
 
-				coverURL := track.CoverURL(g.AlbumCoverSize)
-				response := g.EmbedToResponse(g.EmbedTrackMessage(g.FormatTrack(track), coverURL))
+				coverURL := track.CoverURL(gl.AlbumCoverSize)
+				response := gl.EmbedToResponse(gl.EmbedTrackMessage(gl.FormatTrack(track), coverURL))
 				err = s.InteractionRespond(i.Interaction, response)
 				if err != nil {
 					logger.Errorf("could not respond to interaction: %s", err)
@@ -155,7 +155,7 @@ func AddSlashHandler(session *discordgo.Session, musicService *music.MusicServic
 		name := i.ApplicationCommandData().Name
 		botCommand, found := HandlersMap()[name]
 		if !found {
-			response := g.EmbedToResponse(g.EmbedMessage("Unknown command."))
+			response := gl.EmbedToResponse(gl.EmbedMessage("Unknown command."))
 			s.InteractionRespond(i.Interaction, response)
 			return
 		}
@@ -179,7 +179,7 @@ func AddSlashHandler(session *discordgo.Session, musicService *music.MusicServic
 		if len(args) > 0 {
 			m.Content = args[0]
 		}
-		response := g.EmbedToResponse(botCommand.Handler(args, s, m))
+		response := gl.EmbedToResponse(botCommand.Handler(args, s, m))
 		s.InteractionRespond(i.Interaction, response)
 	})
 }
