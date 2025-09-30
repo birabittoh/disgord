@@ -55,16 +55,6 @@ func readyHandler(s *discordgo.Session, r *discordgo.Ready) {
 	logger.Infof("Logged in as %s", r.User.String())
 }
 
-func makeVSUHandler(ms *music.MusicService) func(s *discordgo.Session, vsu *discordgo.VoiceStateUpdate) {
-	return func(s *discordgo.Session, vsu *discordgo.VoiceStateUpdate) {
-		if vsu.UserID != s.State.User.ID {
-			// update is not from this bot
-			return
-		}
-		ms.HandleBotVSU(vsu)
-	}
-}
-
 func main() {
 	logger.Info("Starting bot... Commit " + g.CommitID)
 	var err error
@@ -89,7 +79,7 @@ func main() {
 	src.InitHandlers(ms)
 	session.AddHandler(messageHandler)
 	session.AddHandler(readyHandler)
-	session.AddHandler(makeVSUHandler(ms))
+	session.AddHandler(func(s *discordgo.Session, vsu *discordgo.VoiceStateUpdate) { ms.HandleBotVSU(s, vsu) })
 	src.AddSlashHandler(session, ms)
 
 	err = session.Open()

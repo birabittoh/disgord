@@ -60,10 +60,14 @@ func (q *Queue) Stop() error {
 	q.nowPlaying = nil
 	if q.audioStream != nil {
 		q.audioStream.Stop()
+		q.audioStream = nil // Clear the stale audio stream
 	}
 	if q.vc != nil && q.ctx != nil {
-		return q.vc.Disconnect(q.ctx)
+		err := q.vc.Disconnect(q.ctx)
+		q.vc = nil // Clear the stale connection
+		return err
 	}
+	q.vc = nil
 	return nil
 }
 

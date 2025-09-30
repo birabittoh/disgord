@@ -149,17 +149,33 @@ func (a *Audio) encoder() {
 
 func (a *Audio) play_sound(vc *discordgo.VoiceConnection) (err error) {
 	a.playing = true
+	defer func() {
+		if r := recover(); r != nil {
+			a.ms.Logger.Error("Recovered from panic in play_sound:", r)
+			err = nil
+		}
+		a.Done <- err
+	}()
+
 	for a.playing {
 		opus, ok := <-a.outputChan
 		if !ok {
 			a.playing = false
+			break
 		}
-		if vc != nil {
-			vc.OpusSend <- opus
+		if vc != nil && vc.OpusSend != nil {
+			// Try to send, but recover if channel is closed
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						a.ms.Logger.Println("OpusSend channel closed, stopping playback")
+						a.playing = false
+					}
+				}()
+				vc.OpusSend <- opus
+			}()
 		}
 	}
-
-	a.Done <- err
 
 	return nil
 }

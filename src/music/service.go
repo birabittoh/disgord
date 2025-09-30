@@ -67,6 +67,10 @@ func (ms *MusicService) GetOrCreateQueue(vc *discordgo.VoiceConnection, channelI
 			ctx:       ms.Ctx,
 		}
 		ms.Queues[vc.GuildID] = q
+	} else {
+		// Update the voice connection and channel in case they changed
+		q.vc = vc
+		q.channelID = channelID
 	}
 
 	return q
@@ -80,7 +84,12 @@ func (ms *MusicService) GetQueue(guildID string) *Queue {
 	return nil
 }
 
-func (ms *MusicService) HandleBotVSU(vsu *discordgo.VoiceStateUpdate) {
+func (ms *MusicService) HandleBotVSU(s *discordgo.Session, vsu *discordgo.VoiceStateUpdate) {
+	if vsu.UserID != s.State.User.ID {
+		// update is not from this bot
+		return
+	}
+
 	if vsu.BeforeUpdate == nil {
 		// user joined a voice channel
 		return
