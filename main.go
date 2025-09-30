@@ -42,6 +42,16 @@ func messageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 }
 
 func readyHandler(s *discordgo.Session, r *discordgo.Ready) {
+	s.UpdateStatusComplex(discordgo.UpdateStatusData{
+		Status: "online",
+		AFK:    false,
+		Activities: []*discordgo.Activity{
+			{
+				Name: "FOSS",
+				Type: discordgo.ActivityTypeCompeting,
+			},
+		},
+	})
 	logger.Infof("Logged in as %s", r.User.String())
 }
 
