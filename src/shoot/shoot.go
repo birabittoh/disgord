@@ -83,7 +83,6 @@ func HandleShoot(args []string, s *discordgo.Session, m *discordgo.MessageCreate
 	killerID := m.Author.ID
 	var allMembers []string
 	for _, vs := range guild.VoiceStates {
-		logger.Debug(vs.UserID)
 		if vs.ChannelID == voiceChannelID && vs.UserID != killerID {
 			member, err := s.State.Member(guild.ID, vs.UserID)
 			if err != nil {

@@ -2,14 +2,17 @@
 package src
 
 import (
-	"log"
 	"strconv"
 	"strings"
 
-	g "github.com/birabittoh/disgord/src/globals"
 	"github.com/birabittoh/disgord/src/music"
+	"github.com/birabittoh/disgord/src/mylog"
+
+	g "github.com/birabittoh/disgord/src/globals"
 	"github.com/bwmarrin/discordgo"
 )
+
+var logger = mylog.NewLogger(nil, "main", mylog.DEBUG)
 
 /*
 RegisterSlashCommands efficiently registers all commands in handlersMap as Discord slash commands.
@@ -45,7 +48,7 @@ func RegisterSlashCommands(session *discordgo.Session) error {
 			if err != nil {
 				return err
 			}
-			log.Printf("Deleted obsolete command: %s", cmd.Name)
+			logger.Infof("Deleted obsolete command: %s", cmd.Name)
 		}
 	}
 
@@ -63,7 +66,7 @@ func RegisterSlashCommands(session *discordgo.Session) error {
 			if err != nil {
 				return err
 			}
-			log.Printf("Created new command: %s (ID: %s)", created.Name, created.ID)
+			logger.Infof("Created new command: %s (ID: %s)", created.Name, created.ID)
 		} else {
 			// Compare and update if changed
 			changed := found.Description != desiredCmd.Description || len(found.Options) != len(desiredCmd.Options)
@@ -81,7 +84,7 @@ func RegisterSlashCommands(session *discordgo.Session) error {
 				if err != nil {
 					return err
 				}
-				log.Printf("Updated command: %s (ID: %s)", updated.Name, updated.ID)
+				logger.Infof("Updated command: %s (ID: %s)", updated.Name, updated.ID)
 			}
 		}
 	}
@@ -89,7 +92,7 @@ func RegisterSlashCommands(session *discordgo.Session) error {
 }
 
 // AddSlashHandler adds a handler for slash command interactions to the session.
-func AddSlashHandler(session *discordgo.Session) {
+func AddSlashHandler(session *discordgo.Session, musicService *music.MusicService) {
 	session.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		if i.Type == discordgo.InteractionMessageComponent {
 			customID := i.MessageComponentData().CustomID
@@ -125,15 +128,15 @@ func AddSlashHandler(session *discordgo.Session) {
 					return
 				}
 
-				voice, err := music.GetVoiceConnection(vc, s, i.GuildID)
+				voice, err := musicService.GetVoiceConnection(vc, s, i.GuildID)
 				if err != nil {
 					response := g.EmbedToResponse(g.EmbedMessage(err.Error()))
 					s.InteractionRespond(i.Interaction, response)
 					return
 				}
 
-				q := music.GetOrCreateQueue(voice, vc)
-				q.AddTrack(track)
+				q := musicService.GetOrCreateQueue(voice, vc)
+				q.AddTrack(musicService, track)
 				delete(g.PendingSearches, key)
 				defer s.ChannelMessageDelete(i.ChannelID, i.Message.ID)
 
@@ -141,7 +144,7 @@ func AddSlashHandler(session *discordgo.Session) {
 				response := g.EmbedToResponse(g.EmbedTrackMessage(g.FormatTrack(track), coverURL))
 				err = s.InteractionRespond(i.Interaction, response)
 				if err != nil {
-					log.Printf("could not respond to interaction: %s", err)
+					logger.Errorf("could not respond to interaction: %s", err)
 				}
 				return
 			}

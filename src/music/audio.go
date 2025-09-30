@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"encoding/binary"
 	"io"
-	"log"
 	"os/exec"
 	"strconv"
 
@@ -13,17 +12,7 @@ import (
 	"layeh.com/gopus"
 )
 
-type Audio struct {
-	playing bool
-	Done    chan error
-
-	opusEncoder  *gopus.Encoder
-	encodeChan   chan []int16
-	outputChan   chan []byte
-	ffmpegStream io.ReadCloser
-}
-
-var (
+const (
 	AudioChannels    int    = 2
 	AudioFrameRate   int    = 48000
 	AudioFrameSize   int    = 960
@@ -32,25 +21,38 @@ var (
 	MaxBytes         int    = (AudioFrameSize * AudioChannels) * 2
 )
 
-func NewAudio(track *miri.SongResult, vc *discordgo.VoiceConnection) (a *Audio, err error) {
+type Audio struct {
+	playing      bool
+	Done         chan error
+	opusEncoder  *gopus.Encoder
+	encodeChan   chan []int16
+	outputChan   chan []byte
+	ffmpegStream io.ReadCloser
+
+	ms *MusicService
+}
+
+func NewAudio(track *miri.SongResult, vc *discordgo.VoiceConnection, ms *MusicService) (a *Audio, err error) {
 	a = &Audio{
 		playing:    true,
 		Done:       make(chan error),
 		encodeChan: make(chan []int16, 450),
 		outputChan: make(chan []byte, 450),
+		ms:         ms,
 	}
 
 	a.opusEncoder, err = gopus.NewEncoder(AudioFrameRate, AudioChannels, gopus.Voip)
 	if err != nil {
-		log.Println("NewEncoder Error:", err)
+		ms.Logger.Error("NewEncoder Error:", err)
 		return
 	}
 
+	bitrate := AudioBitrate
 	if AudioBitrate < 1 || AudioBitrate > 512 {
-		AudioBitrate = 64
+		bitrate = 64
 	}
 
-	a.opusEncoder.SetBitrate(AudioBitrate * 1000)
+	a.opusEncoder.SetBitrate(bitrate * 1000)
 	a.opusEncoder.SetApplication(gopus.Voip)
 
 	a.downloader(track)
@@ -65,21 +67,21 @@ func (a *Audio) downloader(track *miri.SongResult) {
 	ffmpeg_cmd := exec.Command("ffmpeg", "-i", "pipe:0", "-f", "s16le", "-acodec", "pcm_s16le", "-ar", "48000", "-ac", "2", "pipe:1")
 	ffmpegStdin, err := ffmpeg_cmd.StdinPipe()
 	if err != nil {
-		log.Println("Error creating ffmpeg stdin pipe:", err)
+		a.ms.Logger.Error("Error creating ffmpeg stdin pipe:", err)
 		return
 	}
 	a.ffmpegStream, _ = ffmpeg_cmd.StdoutPipe()
 
 	if err := ffmpeg_cmd.Start(); err != nil {
-		log.Println("Error starting ffmpeg command:", err)
+		a.ms.Logger.Error("Error starting ffmpeg command:", err)
 		return
 	}
 
 	// Stream track directly into ffmpeg's Stdin
 	go func() {
-		err := d.StreamTrackByID(*mainCtx, strconv.Itoa(track.ID), ffmpegStdin)
+		err := a.ms.Client.StreamTrackByID(a.ms.Ctx, strconv.Itoa(track.ID), ffmpegStdin)
 		if err != nil {
-			log.Println("Error streaming track:", err)
+			a.ms.Logger.Error("Error streaming track:", err)
 		}
 		ffmpegStdin.Close()
 	}()
@@ -105,14 +107,14 @@ func (a *Audio) reader() {
 
 		if err == io.ErrUnexpectedEOF {
 			// Well there's just a tiny bit left, lets encode it, then quit.
-			//EncodeChan <- buf
+			// EncodeChan <- buf
 			err = nil
 			return
 		}
 
 		if err != nil {
 			// Oh no, something went wrong!
-			log.Println("error reading from stdin,", err)
+			a.ms.Logger.Error("error reading from stdin,", err)
 			return
 		}
 
@@ -122,7 +124,6 @@ func (a *Audio) reader() {
 }
 
 func (a *Audio) encoder() {
-
 	defer func() {
 		close(a.outputChan)
 	}()
@@ -137,7 +138,7 @@ func (a *Audio) encoder() {
 		// try encoding pcm frame with Opus
 		opus, err := a.opusEncoder.Encode(pcm, AudioFrameSize, MaxBytes)
 		if err != nil {
-			log.Println("Encoding Error:", err)
+			a.ms.Logger.Error("Encoding Error:", err)
 			return
 		}
 
@@ -153,31 +154,15 @@ func (a *Audio) play_sound(vc *discordgo.VoiceConnection) (err error) {
 		if !ok {
 			a.playing = false
 		}
-		vc.OpusSend <- opus
+		if vc != nil {
+			vc.OpusSend <- opus
+		}
 	}
 
 	a.Done <- err
 
 	return nil
 }
-
-/*
-	func (a *Audio) Pause() {
-		if a.paused {
-			return
-		}
-
-		a.paused = true
-	}
-
-	func (a *Audio) Resume() {
-		if !a.paused {
-			return
-		}
-
-		a.paused = false
-	}
-*/
 
 func (a *Audio) Stop() {
 	a.playing = false
@@ -186,7 +171,7 @@ func (a *Audio) Stop() {
 func (a *Audio) Monitor(onFinish func()) {
 	go func() {
 		if err := <-a.Done; err != nil {
-			log.Printf("Playback error: %v", err)
+			a.ms.Logger.Errorf("Playback error: %v", err)
 		}
 
 		if onFinish != nil {

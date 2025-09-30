@@ -29,16 +29,16 @@ func HandlersMap() map[string]gl.BotCommand {
 	return handlersMap
 }
 
-func InitHandlers() {
+func InitHandlers(ms *music.MusicService) {
 	handlersMap = map[string]gl.BotCommand{
 		"echo":   {ShortCode: "e", Handler: handleEcho, Help: "echoes a message", SlashOptions: input},
 		"prefix": {Handler: handlePrefix, Help: "sets the bot's prefix for this server", SlashOptions: input},
-		"play":   {ShortCode: "p", Handler: music.HandlePlay, Help: "plays a song", SlashOptions: input},
-		"search": {ShortCode: "f", Handler: music.HandleSearch, Help: "searches for a song", SlashOptions: input},
-		"skip":   {ShortCode: "s", Handler: music.HandleSkip, Help: "skips the current song"},
-		"queue":  {ShortCode: "q", Handler: music.HandleQueue, Help: "shows the current queue"},
-		"clear":  {ShortCode: "c", Handler: music.HandleClear, Help: "clears the current queue"},
-		"leave":  {ShortCode: "l", Handler: music.HandleLeave, Help: "leaves the voice channel"},
+		"play":   {ShortCode: "p", Handler: ms.HandlePlay, Help: "plays a song", SlashOptions: input},
+		"search": {ShortCode: "f", Handler: ms.HandleSearch, Help: "searches for a song", SlashOptions: input},
+		"skip":   {ShortCode: "s", Handler: ms.HandleSkip, Help: "skips the current song"},
+		"queue":  {ShortCode: "q", Handler: ms.HandleQueue, Help: "shows the current queue"},
+		"clear":  {ShortCode: "c", Handler: ms.HandleClear, Help: "clears the current queue"},
+		"leave":  {ShortCode: "l", Handler: ms.HandleLeave, Help: "leaves the voice channel"},
 		"shoot":  {ShortCode: "sh", Handler: shoot.HandleShoot, Help: "shoots a random user in your voice channel"},
 		"help":   {ShortCode: "h", Handler: handleHelp, Help: "shows this help message"},
 		// "pause":  {ShortCode: "pa", Handler: music.HandlePause, Help: "pauses the current song"},

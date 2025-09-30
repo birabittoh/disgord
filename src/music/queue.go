@@ -1,14 +1,11 @@
 package music
 
 import (
-	"os"
+	"context"
 
-	"github.com/birabittoh/disgord/src/mylog"
 	"github.com/birabittoh/miri"
 	"github.com/bwmarrin/discordgo"
 )
-
-var logger = mylog.NewLogger(os.Stdin, "music", mylog.DEBUG)
 
 type Queue struct {
 	nowPlaying  *miri.SongResult
@@ -16,100 +13,64 @@ type Queue struct {
 	audioStream *Audio
 	vc          *discordgo.VoiceConnection
 	channelID   string
+	client      *miri.Client
+	ctx         context.Context
 }
 
-// queues stores all guild queues
-var queues = map[string]*Queue{}
-
-// GetOrCreateQueue fetches or creates a new queue for the guild
-func GetOrCreateQueue(vc *discordgo.VoiceConnection, channelID string) (q *Queue) {
-	q, ok := queues[vc.GuildID]
-	if !ok {
-		q = &Queue{}
-		queues[vc.GuildID] = q
-	}
-
-	q.vc = vc
-	q.channelID = channelID
-	return
+func (q *Queue) AddTrack(ms *MusicService, track *miri.SongResult) {
+	q.AddTracks(ms, []miri.SongResult{*track})
 }
 
-// GetQueue returns either nil or the queue for the requested guild
-func GetQueue(guildID string) *Queue {
-	q, ok := queues[guildID]
-	if ok {
-		return q
-	}
-	return nil
-}
-
-// AddTrack adds a new track to the queue
-func (q *Queue) AddTrack(track *miri.SongResult) {
-	q.AddTracks([]miri.SongResult{*track})
-}
-
-// AddTracks adds a list of tracks to the queue
-func (q *Queue) AddTracks(tracks []miri.SongResult) {
+func (q *Queue) AddTracks(ms *MusicService, tracks []miri.SongResult) {
 	q.items = append(q.items, tracks...)
 	if q.nowPlaying == nil {
-		err := q.PlayNext(false)
+		err := q.PlayNext(ms, false)
 		if err != nil {
-			logger.Error(err)
+			ms.Logger.Error(err)
 		}
 	}
 }
 
-// PlayNext starts playing the next track in the queue
-func (q *Queue) PlayNext(skip bool) (err error) {
+func (q *Queue) PlayNext(ms *MusicService, skip bool) (err error) {
 	if q.audioStream != nil && q.audioStream.playing {
 		q.audioStream.Stop()
-
-		// If this is a manual skip, return early to avoid recursion
-		// The monitor callback will handle playing the next song
 		if skip {
 			return nil
 		}
 	}
-
 	if len(q.items) == 0 {
 		q.nowPlaying = nil
-		return q.vc.Disconnect(*mainCtx)
+		if q.vc != nil && q.ctx != nil {
+			return q.vc.Disconnect(q.ctx)
+		}
+		return nil
 	}
-
 	q.nowPlaying = &q.items[0]
 	q.items = q.items[1:]
-
-	q.audioStream, err = NewAudio(q.nowPlaying, q.vc)
+	q.audioStream, err = NewAudio(q.nowPlaying, q.vc, ms)
 	if err != nil {
 		return
 	}
-
-	q.audioStream.Monitor(func() { q.PlayNext(false) })
+	q.audioStream.Monitor(func() { q.PlayNext(ms, false) })
 	return
 }
 
-// Stop stops the player and clears the queue
 func (q *Queue) Stop() error {
 	q.Clear()
 	q.nowPlaying = nil
-
 	if q.audioStream != nil {
 		q.audioStream.Stop()
 	}
-
-	if q.vc != nil {
-		return q.vc.Disconnect(*mainCtx)
+	if q.vc != nil && q.ctx != nil {
+		return q.vc.Disconnect(q.ctx)
 	}
-
 	return nil
 }
 
-// Clear clears the track queue
 func (q *Queue) Clear() {
 	q.items = []miri.SongResult{}
 }
 
-// Tracks returns all tracks in the queue including the now playing one
 func (q *Queue) Tracks() []miri.SongResult {
 	if q.nowPlaying != nil {
 		return append([]miri.SongResult{*q.nowPlaying}, q.items...)

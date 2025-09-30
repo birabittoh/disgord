@@ -31,10 +31,11 @@ const (
 	MsgHelp             = "**Bot commands:**\n"
 	MsgHelpCommandFmt   = "* %s\n"
 
-	MsgHelpFmt     = "%s - _%s_"
-	defaultPrefix  = "$"
-	defaultColor   = 0xFF73A8
-	AlbumCoverSize = "xl" // "small", "medium", "big", "xl"
+	MsgHelpFmt       = "%s - _%s_"
+	defaultPrefix    = "$"
+	defaultColor     = 0xFF73A8
+	AlbumCoverSize   = "xl" // "small", "medium", "big", "xl"
+	MaxSearchResults = 5
 )
 
 var (

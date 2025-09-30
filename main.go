@@ -55,13 +55,14 @@ func readyHandler(s *discordgo.Session, r *discordgo.Ready) {
 	logger.Infof("Logged in as %s", r.User.String())
 }
 
-func vsuHandler(s *discordgo.Session, vsu *discordgo.VoiceStateUpdate) {
-	if vsu.UserID != s.State.User.ID {
-		// update is not from this bot
-		return
+func makeVSUHandler(ms *music.MusicService) func(s *discordgo.Session, vsu *discordgo.VoiceStateUpdate) {
+	return func(s *discordgo.Session, vsu *discordgo.VoiceStateUpdate) {
+		if vsu.UserID != s.State.User.ID {
+			// update is not from this bot
+			return
+		}
+		ms.HandleBotVSU(vsu)
 	}
-
-	music.HandleBotVSU(vsu)
 }
 
 func main() {
@@ -79,13 +80,17 @@ func main() {
 
 	ctx := context.Background()
 
-	music.Init(&ctx)
+	ms, err := music.NewMusicService(ctx)
+	if err != nil {
+		logger.Fatalf("could not initialize music service: %s", err)
+	}
 
-	src.InitHandlers()
+	// Pass ms to handlers as needed (to be updated in src/commands.go, etc.)
+	src.InitHandlers(ms)
 	session.AddHandler(messageHandler)
 	session.AddHandler(readyHandler)
-	session.AddHandler(vsuHandler)
-	src.AddSlashHandler(session)
+	session.AddHandler(makeVSUHandler(ms))
+	src.AddSlashHandler(session, ms)
 
 	err = session.Open()
 	if err != nil {

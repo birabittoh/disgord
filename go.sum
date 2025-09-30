@@ -1,5 +1,3 @@
-github.com/birabittoh/miri v1.4.4 h1:LtoliV288DswZC7gQusMIM+C+gwBz2vbL5e96zjPrfQ=
-github.com/birabittoh/miri v1.4.4/go.mod h1:sWHr/FTg7hcScTFaSZHpu4V6F1+0dQEph+4U7LzaURU=
 github.com/birabittoh/miri v1.4.5 h1:pdANNqMGtHtoGZ42Za87U3hc9KwU203mcdJy3aFey7s=
 github.com/birabittoh/miri v1.4.5/go.mod h1:sWHr/FTg7hcScTFaSZHpu4V6F1+0dQEph+4U7LzaURU=
 github.com/google/go-cmp v0.6.0/go.mod h1:17dUlkBOakJ0+DkrSSNjCkIjxS6bF9zb3elmeNGIjoY=
