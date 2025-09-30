@@ -34,7 +34,7 @@ const (
 	defaultPrefix    = "$"
 	defaultColor     = 0xFF73A8
 	AlbumCoverSize   = "xl" // "small", "medium", "big", "xl"
-	MaxSearchResults = 5
+	MaxSearchResults = 9
 
 	LogLevel = mylog.DEBUG
 )

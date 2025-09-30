@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	gl "github.com/birabittoh/disgord/src/globals"
+	"github.com/birabittoh/miri"
 	"github.com/bwmarrin/discordgo"
 )
 
@@ -25,8 +26,11 @@ func (ms *MusicService) HandlePlay(args []string, s *discordgo.Session, m *disco
 
 	q := ms.GetOrCreateQueue(voice, vc)
 
-	query := strings.Join(args, " ")
-	results, err := ms.Client.SearchTracks(ms.Ctx, query)
+	opt := miri.SearchOptions{
+		Limit: 1,
+		Query: strings.Join(args, " "),
+	}
+	results, err := ms.Client.SearchTracks(ms.Ctx, opt)
 	if err != nil {
 		ms.Logger.Errorf("could not search track: %v", err)
 		if q.nowPlaying == nil {
@@ -55,7 +59,11 @@ func (ms *MusicService) HandleSearch(args []string, s *discordgo.Session, m *dis
 		return gl.EmbedMessage(gl.MsgNoKeywords)
 	}
 
-	results, err := ms.Client.SearchTracks(ms.Ctx, q)
+	opt := miri.SearchOptions{
+		Limit: gl.MaxSearchResults,
+		Query: q,
+	}
+	results, err := ms.Client.SearchTracks(ms.Ctx, opt)
 	if err != nil {
 		ms.Logger.Errorf("could not search track: %v", err)
 		return gl.EmbedMessage(gl.MsgError)
@@ -65,7 +73,7 @@ func (ms *MusicService) HandleSearch(args []string, s *discordgo.Session, m *dis
 		return gl.EmbedMessage(gl.MsgNoResults)
 	}
 
-	maxResults := min(len(results), 9)
+	maxResults := min(len(results), gl.MaxSearchResults)
 	var out string
 	var buttons []discordgo.MessageComponent
 
