@@ -2,18 +2,13 @@
 package src
 
 import (
-	"os"
-	"strconv"
 	"strings"
 
 	"github.com/birabittoh/disgord/src/music"
-	"github.com/birabittoh/disgord/src/mylog"
 
 	gl "github.com/birabittoh/disgord/src/globals"
 	"github.com/bwmarrin/discordgo"
 )
-
-var logger = mylog.NewLogger(os.Stdout, "main", gl.LogLevel)
 
 /*
 RegisterSlashCommands efficiently registers all commands in handlersMap as Discord slash commands.
@@ -108,96 +103,56 @@ func RegisterSlashCommands(session *discordgo.Session) error {
 // AddSlashHandler adds a handler for slash command interactions to the session.
 func AddSlashHandler(session *discordgo.Session, musicService *music.MusicService) {
 	session.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-		if i.Type == discordgo.InteractionMessageComponent {
+		switch i.Type {
+		case discordgo.InteractionMessageComponent:
+			// Button clicked
 			customID := i.MessageComponentData().CustomID
-			if after, ok := strings.CutPrefix(customID, "choose_track_"); ok {
-				trackIdxStr := after
-				trackIdx, err := strconv.Atoi(trackIdxStr)
-				if err != nil || trackIdx < 0 {
-					response := gl.EmbedToResponse(gl.EmbedMessage("Invalid track selection."))
-					s.InteractionRespond(i.Interaction, response)
-					return
-				}
-
-				key := gl.GetPendingSearchKey(i.ChannelID, i.Member.User.ID)
-				results, found := musicService.Searches[key]
-				if !found || trackIdx > len(results) {
-					response := gl.EmbedToResponse(gl.EmbedMessage("Track not found."))
-					s.InteractionRespond(i.Interaction, response)
-					return
-				}
-
-				if trackIdx == 0 {
-					// Cancel selection
-					delete(musicService.Searches, key)
-					s.ChannelMessageDelete(i.ChannelID, i.Message.ID)
-					return
-				}
-
-				track := &results[trackIdx-1]
-				r, _, vc := gl.GetVoiceChannelID(s, i.Member, i.GuildID, i.Member.User.ID)
-				if r != "" {
-					response := gl.EmbedToResponse(gl.EmbedMessage(r))
-					s.InteractionRespond(i.Interaction, response)
-					return
-				}
-
-				voice, err := musicService.GetVoiceConnection(vc, s, i.GuildID)
-				if err != nil {
-					response := gl.EmbedToResponse(gl.EmbedMessage(err.Error()))
-					s.InteractionRespond(i.Interaction, response)
-					return
-				}
-
-				q := musicService.GetOrCreateQueue(voice, vc)
-				q.AddTrack(musicService, track)
-				delete(musicService.Searches, key)
-				defer s.ChannelMessageDelete(i.ChannelID, i.Message.ID)
-
-				response := gl.EmbedToResponse(gl.EmbedTrackMessage(track))
-				err = s.InteractionRespond(i.Interaction, response)
-				if err != nil {
-					logger.Errorf("could not respond to interaction: %s", err)
-				}
+			splitResult := strings.SplitN(customID, ":", 2)
+			if len(splitResult) != 2 {
+				response := gl.EmbedToResponse(gl.EmbedMessage(gl.MsgUnknownCommand))
+				s.InteractionRespond(i.Interaction, response)
 				return
 			}
-		}
-		if i.Type != discordgo.InteractionApplicationCommand {
-			return
-		}
-		name := i.ApplicationCommandData().Name
-		botCommand, found := HandlersMap()[name]
-		if !found {
-			response := gl.EmbedToResponse(gl.EmbedMessage("Unknown command."))
-			s.InteractionRespond(i.Interaction, response)
-			return
-		}
-		// Extract arguments
-		args := []string{}
-		for _, opt := range i.ApplicationCommandData().Options {
-			if opt.Type == discordgo.ApplicationCommandOptionString {
-				args = append(args, opt.StringValue())
+
+			cmd, arg := splitResult[0], splitResult[1]
+			handler, found := cmdMap[cmd]
+			if !found {
+				response := gl.EmbedToResponse(gl.EmbedMessage(gl.MsgUnknownCommand))
+				s.InteractionRespond(i.Interaction, response)
+				return
 			}
-		}
 
-		// Create minimal MessageCreate for compatibility
-		m := &discordgo.MessageCreate{
-			Message: &discordgo.Message{
-				GuildID:   i.GuildID,
-				ChannelID: i.ChannelID,
-			},
-		}
-		if i.Member != nil {
-			m.Author = i.Member.User
-			m.Member = i.Member
-		} else if i.User != nil {
-			m.Author = i.User
-		}
+			response := handler(arg, s, i)
+			if response != nil {
+				resp := gl.EmbedToResponse(response)
+				s.InteractionRespond(i.Interaction, resp)
+			}
+			return
 
-		if len(args) > 0 {
-			m.Content = args[0]
+		case discordgo.InteractionApplicationCommand:
+			// Slash command invoked
+			name := i.ApplicationCommandData().Name
+			botCommand, found := HandlersMap()[name]
+			if !found {
+				response := gl.EmbedToResponse(gl.EmbedMessage(gl.MsgUnknownCommand))
+				s.InteractionRespond(i.Interaction, response)
+				return
+			}
+
+			args := []string{}
+			for _, opt := range i.ApplicationCommandData().Options {
+				if opt.Type == discordgo.ApplicationCommandOptionString {
+					args = append(args, opt.StringValue())
+				}
+			}
+
+			m := gl.InteractionToMessageCreate(i, args)
+			response := gl.EmbedToResponse(botCommand.Handler(args, s, m))
+			s.InteractionRespond(i.Interaction, response)
+
+		default:
+			logger.Warnf("Unhandled interaction type: %d", i.Type)
+			return
 		}
-		response := gl.EmbedToResponse(botCommand.Handler(args, s, m))
-		s.InteractionRespond(i.Interaction, response)
 	})
 }

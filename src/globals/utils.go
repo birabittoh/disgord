@@ -137,3 +137,25 @@ func EmbedToResponse(msg *discordgo.MessageSend) *discordgo.InteractionResponse 
 		},
 	}
 }
+
+// InteractionToMessageCreate converts an InteractionCreate to a MessageCreate.
+func InteractionToMessageCreate(i *discordgo.InteractionCreate, args []string) *discordgo.MessageCreate {
+	m := &discordgo.MessageCreate{
+		Message: &discordgo.Message{
+			GuildID:   i.GuildID,
+			ChannelID: i.ChannelID,
+		},
+	}
+	if i.Member != nil {
+		m.Author = i.Member.User
+		m.Member = i.Member
+	} else if i.User != nil {
+		m.Author = i.User
+	}
+
+	if len(args) > 0 {
+		m.Content = strings.Join(args, " ")
+	}
+
+	return m
+}

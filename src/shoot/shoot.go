@@ -62,7 +62,7 @@ func (m *Magazine) Shoot() bool {
 }
 
 func (m *Magazine) String() string {
-	return fmt.Sprintf("_%d/%d bullets left in your magazine._", m.Left(), m.Size())
+	return fmt.Sprintf(gl.MsgMagazineFmt, m.Left(), m.Size())
 }
 
 func (s *ShootService) GetMagazine(userID string) (q *Magazine) {
@@ -77,16 +77,6 @@ func (s *ShootService) GetMagazine(userID string) (q *Magazine) {
 }
 
 func (ss *ShootService) HandleShoot(args []string, s *discordgo.Session, m *discordgo.MessageCreate) *discordgo.MessageSend {
-	if m.GuildID == "" {
-		return gl.EmbedMessage(gl.MsgUseInServer)
-	}
-
-	_, err := s.Guild(m.GuildID)
-	if err != nil {
-		ss.logger.Errorf("could not update guild: %s", err)
-		return gl.EmbedMessage(gl.MsgError)
-	}
-
 	response, guild, voiceChannelID := gl.GetVoiceChannelID(s, m.Member, m.GuildID, m.Author.ID)
 	if voiceChannelID == "" {
 		return gl.EmbedMessage(response)
@@ -94,40 +84,39 @@ func (ss *ShootService) HandleShoot(args []string, s *discordgo.Session, m *disc
 
 	killerID := m.Author.ID
 	var allMembers []string
+	var err error
 	for _, vs := range guild.VoiceStates {
 		if vs.ChannelID == voiceChannelID && vs.UserID != killerID {
-			member, err := s.State.Member(guild.ID, vs.UserID)
+			vs.Member, err = s.State.Member(guild.ID, vs.UserID)
 			if err != nil {
 				ss.logger.Errorf("could not get member info: %s", err)
 				continue
 			}
-			if !member.User.Bot {
+			if !vs.Member.User.Bot {
 				allMembers = append(allMembers, vs.UserID)
 			}
 		}
 	}
 
 	if len(allMembers) == 0 {
-		return gl.EmbedMessage("There is no one else to shoot in your voice channel.")
+		return gl.EmbedMessage(fmt.Sprintf(gl.MsgNoOtherUsersFmt, voiceChannelID))
 	}
 
 	magazine := ss.GetMagazine(killerID)
 	if !magazine.Shoot() {
-		return gl.EmbedMessage("💨 Too bad... You're out of bullets.")
+		return gl.EmbedMessage(gl.MsgOutOfBullets)
 	}
 
-	var victimID string
+	victimID := killerID
 	if rand.IntN(100) < bustProbability {
-		victimID = killerID
-	} else {
 		victimID = allMembers[rand.IntN(len(allMembers))]
 	}
 
 	err = s.GuildMemberMove(m.GuildID, victimID, nil)
 	if err != nil {
 		ss.logger.Errorf("could not kick user: %s", err)
-		return gl.EmbedMessage("Failed to kick the user from the voice channel.")
+		return gl.EmbedMessage(gl.MsgCantKickUser)
 	}
 
-	return gl.EmbedMessage("💥 *Bang!* <@" + victimID + "> was shot. " + magazine.String())
+	return gl.EmbedMessage(fmt.Sprintf(gl.MsgShootFmt, victimID, magazine.String()))
 }

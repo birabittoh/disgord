@@ -9,6 +9,7 @@ import (
 )
 
 const (
+	// General messages
 	MsgError            = "Something went wrong."
 	MsgNoResults        = "No results found."
 	MsgNoKeywords       = "Please, provide some keywords."
@@ -16,24 +17,33 @@ const (
 	MsgUseInServer      = "You can only use this command inside a server."
 	MsgSameVoiceChannel = "You need to be in the same voice channel to use this command."
 	MsgNoVoiceChannel   = "You need to be in a voice channel to use this command."
-	MsgNoLyrics         = "No lyrics found for this song."
-	MsgOrderedList      = "%d. %s\n"
-	MsgUnorderedList    = "* %s\n"
-	MsgSearchHelp       = "\nTo pick a song, just type the number of your selection or 0 to cancel.\n"
-	MsgChoiceOutOfRange = "Choice out of range. Please pick a number between 1 and %d."
-	MsgCanceled         = "Canceled."
-	MsgPaused           = "Paused."
-	MsgResumed          = "Resumed."
-	MsgSkipped          = "Skipped."
-	MsgCleared          = "Cleared."
-	MsgLeft             = "Left."
 	MsgUnknownCommand   = "Unknown command: %s."
 	MsgPrefixSet        = "Prefix set to `%s`."
 	MsgPrefixTooLong    = "Prefix is too long."
 	MsgUsagePrefix      = "Usage: %s <new prefix>."
 	MsgHelp             = "**Bot commands:**\n"
+	MsgHelpFmt          = "%s - _%s_"
+	MsgOrderedList      = "%d. %s\n"
+	MsgUnorderedList    = "* %s\n"
 
-	MsgHelpFmt                   = "%s - _%s_"
+	// Shoot messages
+	MsgCantKickUser    = "Could not kick user from the voice channel."
+	MsgOutOfBullets    = "💨 Too bad... You're out of bullets."
+	MsgNoOtherUsersFmt = "There is no one else to shoot in <#%s>."
+	MsgMagazineFmt     = "_%d/%d bullets left in your magazine._"
+	MsgShootFmt        = "💥 *Bang!* <@%s> was shot. %s"
+
+	// Music messages
+	MsgCanceled           = "Canceled."
+	MsgPaused             = "Paused."
+	MsgResumed            = "Resumed."
+	MsgSkipped            = "Skipped."
+	MsgCleared            = "Cleared."
+	MsgLeft               = "Left."
+	MsgNoLyrics           = "No lyrics found for this song."
+	MsgInvalidTrackNumber = "Invalid track selection."
+	MsgCantFindSearch     = "Could not find your previous search, please try again."
+
 	defaultPrefix                = "$"
 	defaultColor                 = 0xFF73A8
 	AlbumCoverSize               = "xl" // "small", "medium", "big", "xl"

@@ -2,6 +2,7 @@ package music
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	gl "github.com/birabittoh/disgord/src/globals"
@@ -83,7 +84,7 @@ func (ms *MusicService) HandleSearch(args []string, s *discordgo.Session, m *dis
 		buttons = append(buttons, discordgo.Button{
 			Label:    fmt.Sprintf("%d", i+1),
 			Style:    discordgo.PrimaryButton,
-			CustomID: fmt.Sprintf("choose_track_%d", i+1),
+			CustomID: fmt.Sprintf("choose_track:%d", i+1),
 		})
 	}
 
@@ -91,10 +92,8 @@ func (ms *MusicService) HandleSearch(args []string, s *discordgo.Session, m *dis
 	buttons = append(buttons, discordgo.Button{
 		Label:    "Cancel",
 		Style:    discordgo.DangerButton,
-		CustomID: "choose_track_0",
+		CustomID: "choose_track:0",
 	})
-
-	out += gl.MsgSearchHelp
 
 	key := gl.GetPendingSearchKey(m.ChannelID, m.Author.ID)
 	ms.Searches[key] = results[:maxResults]
@@ -213,4 +212,42 @@ func (ms *MusicService) HandleLeave(args []string, s *discordgo.Session, m *disc
 
 	ms.DeleteQueue(g.ID)
 	return gl.EmbedMessage(gl.MsgLeft)
+}
+
+func (ms *MusicService) HandleChooseTrack(arg string, s *discordgo.Session, i *discordgo.InteractionCreate) *discordgo.MessageSend {
+	trackIdx, err := strconv.Atoi(arg)
+	if err != nil || trackIdx < 0 {
+		return gl.EmbedMessage(gl.MsgInvalidTrackNumber)
+	}
+
+	key := gl.GetPendingSearchKey(i.ChannelID, i.Member.User.ID)
+	results, found := ms.Searches[key]
+	if !found || trackIdx > len(results) {
+		return gl.EmbedMessage(gl.MsgCantFindSearch)
+	}
+
+	if trackIdx == 0 {
+		// Cancel selection silently
+		delete(ms.Searches, key)
+		s.ChannelMessageDelete(i.ChannelID, i.Message.ID)
+		return nil
+	}
+
+	track := &results[trackIdx-1]
+	r, _, vc := gl.GetVoiceChannelID(s, i.Member, i.GuildID, i.Member.User.ID)
+	if r != "" {
+		return gl.EmbedMessage(r)
+	}
+
+	voice, err := ms.GetVoiceConnection(vc, s, i.GuildID)
+	if err != nil {
+		return gl.EmbedMessage(err.Error())
+	}
+
+	q := ms.GetOrCreateQueue(voice, vc)
+	q.AddTrack(ms, track)
+	delete(ms.Searches, key)
+	defer s.ChannelMessageDelete(i.ChannelID, i.Message.ID)
+
+	return gl.EmbedTrackMessage(track)
 }

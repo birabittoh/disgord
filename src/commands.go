@@ -2,16 +2,21 @@ package src
 
 import (
 	"fmt"
+	"os"
 	"slices"
 	"strings"
 
 	gl "github.com/birabittoh/disgord/src/globals"
 	"github.com/birabittoh/disgord/src/music"
+	"github.com/birabittoh/disgord/src/mylog"
 	"github.com/birabittoh/disgord/src/shoot"
 	"github.com/bwmarrin/discordgo"
 )
 
 var (
+	logger = mylog.NewLogger(os.Stdout, "main", gl.LogLevel)
+
+	cmdMap       map[string]func(arg string, s *discordgo.Session, i *discordgo.InteractionCreate) *discordgo.MessageSend
 	handlersMap  map[string]gl.BotCommand
 	aliasMap     = map[string]string{}
 	commandNames []string
@@ -62,6 +67,10 @@ func InitHandlers(ms *music.MusicService, ss *shoot.ShootService) {
 	}
 
 	slices.Sort(commandNames)
+
+	cmdMap = map[string]func(arg string, s *discordgo.Session, i *discordgo.InteractionCreate) *discordgo.MessageSend{
+		"choose_track": ms.HandleChooseTrack,
+	}
 }
 
 func HandleCommand(s *discordgo.Session, m *discordgo.MessageCreate) (response *discordgo.MessageSend, ok bool, err error) {
