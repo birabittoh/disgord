@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/birabittoh/disgord/src/config"
 	gl "github.com/birabittoh/disgord/src/globals"
 	"github.com/birabittoh/disgord/src/mylog"
 	"github.com/bwmarrin/discordgo"
@@ -25,19 +26,19 @@ type Magazine struct {
 	last time.Time
 }
 
-func NewShootService(session *discordgo.Session, magazineSize uint, bustProbability uint) *ShootService {
-	if bustProbability == 0 {
-		bustProbability = 50
+func NewShootService(session *discordgo.Session, cfg *config.Config) *ShootService {
+	if cfg.BustProbability == 0 {
+		cfg.BustProbability = 50
 	}
-	if bustProbability > 100 {
-		bustProbability = 100
+	if cfg.BustProbability > 100 {
+		cfg.BustProbability = 100
 	}
 
 	return &ShootService{
 		session:         session,
-		logger:          mylog.NewLogger(os.Stdin, "shoot", gl.LogLevel),
+		logger:          mylog.New(os.Stdin, "shoot", cfg.LogLevel),
 		magazines:       make(map[string]*Magazine),
-		bustProbability: bustProbability,
+		bustProbability: cfg.BustProbability,
 	}
 }
 

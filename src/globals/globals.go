@@ -1,10 +1,7 @@
 package globals
 
 import (
-	"os"
-
 	"github.com/birabittoh/disgord/src/config"
-	"github.com/birabittoh/disgord/src/mylog"
 	"github.com/bwmarrin/discordgo"
 )
 
@@ -44,20 +41,15 @@ const (
 	MsgInvalidTrackNumber = "Invalid track selection."
 	MsgCantFindSearch     = "Could not find your previous search, please try again."
 
-	AlbumCoverSize                 = "xl" // "small", "medium", "big", "xl"
-	MaxSearchResults               = 9
 	DiscordEmbedDescriptionLimit   = 4096
 	DefaultSearchOptionName        = "input"
 	DefaultSearchOptionDescription = "command arguments"
-
-	LogLevel = mylog.DEBUG
 )
 
 var (
 	CommitID string
 
 	Config *config.Config
-	logger = mylog.NewLogger(os.Stdout, "globals", LogLevel)
 )
 
 type SlashOption struct {
@@ -73,5 +65,4 @@ type BotCommand struct {
 	Alias        string
 	Help         string
 	SlashOptions []SlashOption // Slash command options
-	SlashOnly    bool          // If true, only available as slash command
 }

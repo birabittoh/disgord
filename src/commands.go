@@ -33,7 +33,7 @@ func NewBotService(cfg *config.Config) (bs *BotService, err error) {
 
 	bs = &BotService{
 		config:   cfg,
-		logger:   mylog.NewLogger(os.Stdout, "main", gl.LogLevel),
+		logger:   mylog.New(os.Stdout, "main", cfg.LogLevel),
 		aliasMap: make(map[string]string),
 	}
 
@@ -42,8 +42,8 @@ func NewBotService(cfg *config.Config) (bs *BotService, err error) {
 		return nil, errors.New("could not create bot session: " + err.Error())
 	}
 
-	bs.ss = shoot.NewShootService(bs.session, cfg.MagazineSize, cfg.BustProbability)
-	bs.ms, err = music.NewMusicService(ctx, bs.session, bs.config.ArlCookie, bs.config.SecretKey)
+	bs.ss = shoot.NewShootService(bs.session, cfg)
+	bs.ms, err = music.NewMusicService(ctx, bs.session, bs.config)
 	if err != nil {
 		return nil, errors.New("could not initialize music service: " + err.Error())
 	}
@@ -128,6 +128,10 @@ func (bs *BotService) initHandlers() {
 }
 
 func (bs *BotService) handleCommand(m *discordgo.MessageCreate) (response *discordgo.MessageSend, ok bool, err error) {
+	if bs.config.DisablePrefixCommands {
+		return nil, false, nil
+	}
+
 	command, args, ok := gl.ParseUserMessage(m.Content)
 	if !ok {
 		return

@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	gl "github.com/birabittoh/disgord/src/globals"
+	"github.com/birabittoh/disgord/src/config"
 	"github.com/birabittoh/disgord/src/mylog"
 	"github.com/birabittoh/miri"
 	"github.com/birabittoh/miri/deezer"
@@ -13,33 +13,35 @@ import (
 )
 
 type MusicService struct {
-	session  *discordgo.Session
-	Ctx      context.Context
-	Client   *miri.Client
-	Logger   *mylog.Logger
-	Queues   map[string]*Queue
-	Searches map[string][]miri.SongResult
+	session          *discordgo.Session
+	Ctx              context.Context
+	Client           *miri.Client
+	Logger           *mylog.Logger
+	Queues           map[string]*Queue
+	Searches         map[string][]miri.SongResult
+	maxSearchResults uint64
 }
 
-func NewMusicService(ctx context.Context, session *discordgo.Session, arlCoookie string, secretKey string) (*MusicService, error) {
-	cfg, err := deezer.NewConfig(arlCoookie, secretKey)
+func NewMusicService(ctx context.Context, session *discordgo.Session, cfg *config.Config) (*MusicService, error) {
+	dCfg, err := deezer.NewConfig(cfg.ArlCookie, cfg.SecretKey)
 	if err != nil {
 		return nil, err
 	}
 
-	cfg.Timeout = 30 * time.Minute // long timeout for music streaming
-	client, err := miri.New(ctx, cfg)
+	dCfg.Timeout = 30 * time.Minute // long timeout for music streaming
+	client, err := miri.New(ctx, dCfg)
 	if err != nil {
 		return nil, err
 	}
 
 	return &MusicService{
-		session:  session,
-		Ctx:      ctx,
-		Client:   client,
-		Logger:   mylog.NewLogger(os.Stdout, "music", gl.LogLevel),
-		Queues:   make(map[string]*Queue),
-		Searches: make(map[string][]miri.SongResult),
+		session:          session,
+		Ctx:              ctx,
+		Client:           client,
+		Logger:           mylog.New(os.Stdout, "music", cfg.LogLevel),
+		Queues:           make(map[string]*Queue),
+		Searches:         make(map[string][]miri.SongResult),
+		maxSearchResults: uint64(cfg.MaxSearchResults),
 	}, nil
 }
 

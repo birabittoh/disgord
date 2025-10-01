@@ -17,7 +17,6 @@ func GetVoiceChannelID(s *discordgo.Session, member *discordgo.Member, guildID, 
 
 	g, err := s.State.Guild(guildID)
 	if err != nil {
-		logger.Errorf("could not get guild: %s", err)
 		response = MsgError
 		return
 	}
@@ -47,7 +46,7 @@ func (bc BotCommand) FormatHelp(command, guildID string) string {
 }
 
 func FormatCommand(command, guildID string) string {
-	return fmt.Sprintf("`%s%s`", GetPrefix(), command)
+	return fmt.Sprintf("`%s%s`", Config.Prefix, command)
 }
 
 func FormatTrackLine(v *miri.SongResult) string {
@@ -56,7 +55,7 @@ func FormatTrackLine(v *miri.SongResult) string {
 }
 
 func ParseUserMessage(messageContent string) (command string, args []string, ok bool) {
-	after, found := strings.CutPrefix(messageContent, GetPrefix())
+	after, found := strings.CutPrefix(messageContent, Config.Prefix)
 	if !found {
 		return
 	}
@@ -64,10 +63,6 @@ func ParseUserMessage(messageContent string) (command string, args []string, ok 
 	userInput := strings.Split(after, " ")
 	command = strings.ToLower(userInput[0])
 	return command, userInput[1:], len(command) > 0
-}
-
-func GetPrefix() string {
-	return Config.Prefix
 }
 
 func GetPendingSearchKey(channelID, authorID string) string {
@@ -90,7 +85,7 @@ func EmbedMessage(content string) *discordgo.MessageSend {
 func EmbedTrackMessage(track *miri.SongResult) *discordgo.MessageSend {
 	response := EmbedMessage(fmt.Sprintf("%s\n\n_%s_", track.Artist.Name, track.Album.Title))
 	response.Embeds[0].Title = track.Title
-	response.Embeds[0].Thumbnail = &discordgo.MessageEmbedThumbnail{URL: track.CoverURL(AlbumCoverSize)}
+	response.Embeds[0].Thumbnail = &discordgo.MessageEmbedThumbnail{URL: track.CoverURL(Config.AlbumCoverSize)}
 	return response
 }
 

@@ -22,7 +22,7 @@ COPY src ./src
 
 # Build
 RUN commit_hash=$(cat commitID | cut -c1-7) && \
-    go build -ldflags "-X github.com/birabittoh/disgord/src/globals.CommitID=$commit_hash" -trimpath -o /dist/disgord
+    go build -ldflags "-X github.com/birabittoh/disgord/src/globals.CommitID=$commit_hash" -o /dist/disgord
 
 
 # Test

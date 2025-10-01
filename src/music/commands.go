@@ -60,7 +60,7 @@ func (ms *MusicService) HandleSearch(args []string, m *discordgo.MessageCreate) 
 	}
 
 	opt := miri.SearchOptions{
-		Limit: gl.MaxSearchResults,
+		Limit: ms.maxSearchResults,
 		Query: q,
 	}
 	results, err := ms.Client.SearchTracks(ms.Ctx, opt)
@@ -73,7 +73,7 @@ func (ms *MusicService) HandleSearch(args []string, m *discordgo.MessageCreate) 
 		return gl.EmbedMessage(gl.MsgNoResults)
 	}
 
-	maxResults := min(len(results), gl.MaxSearchResults)
+	maxResults := min(len(results), int(ms.maxSearchResults))
 	var out string
 	var buttons []discordgo.MessageComponent
 

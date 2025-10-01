@@ -16,7 +16,7 @@ all: build
 build:
 	@echo "Building $(APP_NAME)..."
 	@mkdir -p $(BUILD_DIR)
-	CGO_ENABLED=0 go build $(LDFLAGS) -trimpath -o $(BUILD_DIR)/$(APP_NAME)
+	CGO_ENABLED=1 go build $(LDFLAGS) -o $(BUILD_DIR)/$(APP_NAME)
 
 # Run tests
 test:

@@ -17,34 +17,39 @@ func (bs *BotService) registerSlashCommands() error {
 	if err != nil {
 		return err
 	}
+
+	bs.logger.Debug("Slash commands registration started")
+
 	desired := map[string]*discordgo.ApplicationCommand{}
-	for name, botCommand := range bs.HandlersMap() {
-		options := []*discordgo.ApplicationCommandOption{}
-		for _, opt := range botCommand.SlashOptions {
-			options = append(options, &discordgo.ApplicationCommandOption{
-				Type:        opt.Type,
-				Name:        opt.Name,
-				Description: opt.Description,
-				Required:    opt.Required,
-			})
-		}
+	if !bs.config.DisableSlashCommands {
+		for name, botCommand := range bs.HandlersMap() {
+			options := []*discordgo.ApplicationCommandOption{}
+			for _, opt := range botCommand.SlashOptions {
+				options = append(options, &discordgo.ApplicationCommandOption{
+					Type:        opt.Type,
+					Name:        opt.Name,
+					Description: opt.Description,
+					Required:    opt.Required,
+				})
+			}
 
-		cmd := &discordgo.ApplicationCommand{
-			Name:        name,
-			Description: botCommand.Help,
-			Options:     options,
-		}
-
-		desired[name] = cmd
-
-		// Register alias as a separate command if present and non-empty
-		if botCommand.Alias != "" {
-			aliasCmd := &discordgo.ApplicationCommand{
-				Name:        botCommand.Alias,
+			cmd := &discordgo.ApplicationCommand{
+				Name:        name,
 				Description: botCommand.Help,
 				Options:     options,
 			}
-			desired[botCommand.Alias] = aliasCmd
+
+			desired[name] = cmd
+
+			// Register alias as a separate command if present and non-empty
+			if botCommand.Alias != "" {
+				aliasCmd := &discordgo.ApplicationCommand{
+					Name:        botCommand.Alias,
+					Description: botCommand.Help,
+					Options:     options,
+				}
+				desired[botCommand.Alias] = aliasCmd
+			}
 		}
 	}
 
@@ -73,7 +78,7 @@ func (bs *BotService) registerSlashCommands() error {
 			if err != nil {
 				return err
 			}
-			bs.logger.Infof("Created new command: %s (ID: %s)", created.Name, created.ID)
+			bs.logger.Infof("Created new command: %s", created.Name)
 		} else {
 			// Compare and update if changed
 			changed := found.Description != desiredCmd.Description || len(found.Options) != len(desiredCmd.Options)
@@ -95,6 +100,8 @@ func (bs *BotService) registerSlashCommands() error {
 			}
 		}
 	}
+
+	bs.logger.Info("Slash commands registration completed")
 	return nil
 }
 
@@ -126,6 +133,10 @@ func (bs *BotService) slashHandler(s *discordgo.Session, i *discordgo.Interactio
 		return
 
 	case discordgo.InteractionApplicationCommand:
+		if bs.config.DisableSlashCommands {
+			return
+		}
+
 		name := i.ApplicationCommandData().Name
 		botCommand, found := bs.HandlersMap()[name]
 		if !found {

@@ -26,7 +26,11 @@ type Logger struct {
 	name        string
 }
 
-func NewLogger(out io.Writer, name string, level Level) (l *Logger) {
+func New(out io.Writer, name string, level Level) (l *Logger) {
+	if out == nil {
+		panic("output must not be nil")
+	}
+
 	l = &Logger{
 		level: level,
 
