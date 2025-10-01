@@ -15,7 +15,8 @@ type ShootService struct {
 	session         *discordgo.Session
 	logger          *mylog.Logger
 	magazines       map[string]*Magazine
-	bustProbability int // percentage
+	bustProbability uint // percentage
+	magazineSize    uint
 }
 
 type Magazine struct {
@@ -24,12 +25,19 @@ type Magazine struct {
 	last time.Time
 }
 
-func NewShootService(session *discordgo.Session) *ShootService {
+func NewShootService(session *discordgo.Session, magazineSize uint, bustProbability uint) *ShootService {
+	if bustProbability == 0 {
+		bustProbability = 50
+	}
+	if bustProbability > 100 {
+		bustProbability = 100
+	}
+
 	return &ShootService{
 		session:         session,
 		logger:          mylog.NewLogger(os.Stdin, "shoot", gl.LogLevel),
 		magazines:       make(map[string]*Magazine),
-		bustProbability: 50, // 50% chance to shoot oneself
+		bustProbability: bustProbability,
 	}
 }
 
@@ -73,7 +81,7 @@ func (s *ShootService) GetMagazine(userID string) (q *Magazine) {
 		return
 	}
 
-	q = NewMagazine(gl.Config.Values.MagazineSize)
+	q = NewMagazine(s.magazineSize)
 	s.magazines[userID] = q
 	return
 }
@@ -110,7 +118,7 @@ func (ss *ShootService) HandleShoot(args []string, m *discordgo.MessageCreate) *
 	}
 
 	victimID := killerID
-	if rand.IntN(100) < ss.bustProbability {
+	if rand.UintN(100) < ss.bustProbability {
 		victimID = allMembers[rand.IntN(len(allMembers))]
 	}
 

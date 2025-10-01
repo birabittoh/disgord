@@ -10,6 +10,7 @@ import (
 
 	gl "github.com/birabittoh/disgord/src/globals"
 	"github.com/birabittoh/disgord/src/music"
+	"github.com/birabittoh/disgord/src/myconfig"
 	"github.com/birabittoh/disgord/src/mylog"
 	"github.com/birabittoh/disgord/src/shoot"
 	"github.com/bwmarrin/discordgo"
@@ -17,6 +18,7 @@ import (
 
 type BotService struct {
 	session      *discordgo.Session
+	config       *myconfig.Config[gl.MyConfig]
 	logger       *mylog.Logger
 	cmdMap       map[string]func(arg string, i *discordgo.InteractionCreate) *discordgo.MessageSend
 	handlersMap  map[string]gl.BotCommand
@@ -26,21 +28,22 @@ type BotService struct {
 	ss           *shoot.ShootService
 }
 
-func NewBotService(cfg gl.MyConfig) (bs *BotService, err error) {
+func NewBotService(cfg *myconfig.Config[gl.MyConfig]) (bs *BotService, err error) {
 	ctx := context.Background()
 
 	bs = &BotService{
+		config:   cfg,
 		logger:   mylog.NewLogger(os.Stdout, "main", gl.LogLevel),
 		aliasMap: make(map[string]string),
 	}
 
-	bs.session, err = discordgo.New("Bot " + cfg.Token)
+	bs.session, err = discordgo.New("Bot " + cfg.Values.Token)
 	if err != nil {
 		return nil, errors.New("could not create bot session: " + err.Error())
 	}
 
-	bs.ss = shoot.NewShootService(bs.session)
-	bs.ms, err = music.NewMusicService(ctx, bs.session)
+	bs.ss = shoot.NewShootService(bs.session, cfg.Values.MagazineSize, cfg.Values.BustProbability)
+	bs.ms, err = music.NewMusicService(ctx, bs.session, bs.config.Values.ArlCookie, bs.config.Values.SecretKey)
 	if err != nil {
 		return nil, errors.New("could not initialize music service: " + err.Error())
 	}
@@ -146,6 +149,9 @@ func (bs *BotService) handleCommand(m *discordgo.MessageCreate) (response *disco
 }
 
 func (bs *BotService) handleEcho(args []string, m *discordgo.MessageCreate) *discordgo.MessageSend {
+	if len(args) == 0 {
+		return nil
+	}
 	return gl.EmbedMessage(strings.Join(args, " "))
 }
 

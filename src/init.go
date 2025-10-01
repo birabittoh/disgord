@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"os/signal"
+	"path/filepath"
 
 	gl "github.com/birabittoh/disgord/src/globals"
 	"github.com/birabittoh/disgord/src/myconfig"
@@ -48,20 +49,40 @@ func (bs *BotService) readyHandler(s *discordgo.Session, r *discordgo.Ready) {
 	bs.logger.Infof("Logged in as %s", r.User.String())
 }
 
-func Main() error {
-	var err error
+func getCommitID() string {
+	file, err := os.ReadFile(filepath.Join(".git", "HEAD"))
+	if err == nil {
+		ref := string(file)
+		if len(ref) > 5 && ref[:5] == "ref: " {
+			refFile, err := os.ReadFile(filepath.Join(".git", ref[5:len(ref)-1]))
+			if err == nil {
+				return string(refFile[:7])
+			}
+		} else if len(ref) >= 7 {
+			return ref[:7]
+		}
+	}
+	return "unknown"
+}
+
+func Main() (err error) {
 	gl.Config, err = myconfig.New[gl.MyConfig]("config.json")
 	if err != nil {
 		return errors.New("could not load config: " + err.Error())
 	}
 
-	bs, err := NewBotService(gl.Config.Values)
+	bs, err := NewBotService(gl.Config)
 	if err != nil {
 		return errors.New("could not create bot service: " + err.Error())
 	}
 
+	if gl.CommitID == "" {
+		gl.CommitID = getCommitID()
+	}
+
 	bs.Start()
 	bs.logger.Info("Bot started... Commit " + gl.CommitID)
+
 	sigch := make(chan os.Signal, 1)
 	signal.Notify(sigch, os.Interrupt)
 	<-sigch

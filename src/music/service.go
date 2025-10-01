@@ -21,8 +21,8 @@ type MusicService struct {
 	Searches map[string][]miri.SongResult
 }
 
-func NewMusicService(ctx context.Context, session *discordgo.Session) (*MusicService, error) {
-	cfg, err := deezer.NewConfig(gl.Config.Values.ArlCookie, gl.Config.Values.SecretKey)
+func NewMusicService(ctx context.Context, session *discordgo.Session, arlCoookie string, secretKey string) (*MusicService, error) {
+	cfg, err := deezer.NewConfig(arlCoookie, secretKey)
 	if err != nil {
 		return nil, err
 	}

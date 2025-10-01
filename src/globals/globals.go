@@ -57,8 +57,8 @@ const (
 
 var (
 	CommitID string
-	Config   *myconfig.Config[MyConfig]
 
+	Config *myconfig.Config[MyConfig]
 	logger = mylog.NewLogger(os.Stdout, "globals", LogLevel)
 )
 
@@ -74,9 +74,10 @@ type MyConfig struct {
 	SecretKey     string `json:"secretKey"`
 
 	Prefixes []KeyValuePair `json:"prefixes"`
-	Radios   []KeyValuePair `json:"radios"`
+	//Radios   []KeyValuePair `json:"radios"`
 
-	MagazineSize uint `json:"magazineSize"`
+	MagazineSize    uint `json:"magazineSize"`
+	BustProbability uint `json:"bustProbability"`
 }
 
 type SlashOption struct {
