@@ -4,23 +4,21 @@ package src
 import (
 	"strings"
 
-	"github.com/birabittoh/disgord/src/music"
-
 	gl "github.com/birabittoh/disgord/src/globals"
 	"github.com/bwmarrin/discordgo"
 )
 
 /*
-RegisterSlashCommands efficiently registers all commands in handlersMap as Discord slash commands.
+registerSlashCommands efficiently registers all commands in handlersMap as Discord slash commands.
 It only deletes obsolete commands, creates new ones, and updates changed ones.
 */
-func RegisterSlashCommands(session *discordgo.Session) error {
-	existingCommands, err := session.ApplicationCommands(session.State.User.ID, "")
+func (bs *BotService) registerSlashCommands() error {
+	existingCommands, err := bs.session.ApplicationCommands(bs.session.State.User.ID, "")
 	if err != nil {
 		return err
 	}
 	desired := map[string]*discordgo.ApplicationCommand{}
-	for name, botCommand := range HandlersMap() {
+	for name, botCommand := range bs.HandlersMap() {
 		options := []*discordgo.ApplicationCommandOption{}
 		for _, opt := range botCommand.SlashOptions {
 			options = append(options, &discordgo.ApplicationCommandOption{
@@ -53,11 +51,11 @@ func RegisterSlashCommands(session *discordgo.Session) error {
 	// Delete obsolete commands
 	for _, cmd := range existingCommands {
 		if _, ok := desired[cmd.Name]; !ok {
-			err := session.ApplicationCommandDelete(session.State.User.ID, "", cmd.ID)
+			err := bs.session.ApplicationCommandDelete(bs.session.State.User.ID, "", cmd.ID)
 			if err != nil {
 				return err
 			}
-			logger.Infof("Deleted obsolete command: %s", cmd.Name)
+			bs.logger.Infof("Deleted obsolete command: %s", cmd.Name)
 		}
 	}
 
@@ -71,11 +69,11 @@ func RegisterSlashCommands(session *discordgo.Session) error {
 			}
 		}
 		if found == nil {
-			created, err := session.ApplicationCommandCreate(gl.Config.Values.ApplicationID, "", desiredCmd)
+			created, err := bs.session.ApplicationCommandCreate(gl.Config.Values.ApplicationID, "", desiredCmd)
 			if err != nil {
 				return err
 			}
-			logger.Infof("Created new command: %s (ID: %s)", created.Name, created.ID)
+			bs.logger.Infof("Created new command: %s (ID: %s)", created.Name, created.ID)
 		} else {
 			// Compare and update if changed
 			changed := found.Description != desiredCmd.Description || len(found.Options) != len(desiredCmd.Options)
@@ -89,70 +87,66 @@ func RegisterSlashCommands(session *discordgo.Session) error {
 				}
 			}
 			if changed {
-				updated, err := session.ApplicationCommandEdit(gl.Config.Values.ApplicationID, "", found.ID, desiredCmd)
+				updated, err := bs.session.ApplicationCommandEdit(gl.Config.Values.ApplicationID, "", found.ID, desiredCmd)
 				if err != nil {
 					return err
 				}
-				logger.Infof("Updated command: %s (ID: %s)", updated.Name, updated.ID)
+				bs.logger.Infof("Updated command: %s (ID: %s)", updated.Name, updated.ID)
 			}
 		}
 	}
 	return nil
 }
 
-// AddSlashHandler adds a handler for slash command interactions to the session.
-func AddSlashHandler(session *discordgo.Session, musicService *music.MusicService) {
-	session.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-		switch i.Type {
-		case discordgo.InteractionMessageComponent:
-			// Button clicked
-			customID := i.MessageComponentData().CustomID
-			splitResult := strings.SplitN(customID, ":", 2)
-			if len(splitResult) != 2 {
-				response := gl.EmbedToResponse(gl.EmbedMessage(gl.MsgUnknownCommand))
-				s.InteractionRespond(i.Interaction, response)
-				return
-			}
-
-			cmd, arg := splitResult[0], splitResult[1]
-			handler, found := cmdMap[cmd]
-			if !found {
-				response := gl.EmbedToResponse(gl.EmbedMessage(gl.MsgUnknownCommand))
-				s.InteractionRespond(i.Interaction, response)
-				return
-			}
-
-			response := handler(arg, s, i)
-			if response != nil {
-				resp := gl.EmbedToResponse(response)
-				s.InteractionRespond(i.Interaction, resp)
-			}
-			return
-
-		case discordgo.InteractionApplicationCommand:
-			// Slash command invoked
-			name := i.ApplicationCommandData().Name
-			botCommand, found := HandlersMap()[name]
-			if !found {
-				response := gl.EmbedToResponse(gl.EmbedMessage(gl.MsgUnknownCommand))
-				s.InteractionRespond(i.Interaction, response)
-				return
-			}
-
-			args := []string{}
-			for _, opt := range i.ApplicationCommandData().Options {
-				if opt.Type == discordgo.ApplicationCommandOptionString {
-					args = append(args, opt.StringValue())
-				}
-			}
-
-			m := gl.InteractionToMessageCreate(i, args)
-			response := gl.EmbedToResponse(botCommand.Handler(args, s, m))
+// slashHandler adds a handler for Discord interactions, routing them to the appropriate command handlers.
+func (bs *BotService) slashHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	switch i.Type {
+	case discordgo.InteractionMessageComponent:
+		customID := i.MessageComponentData().CustomID
+		splitResult := strings.SplitN(customID, ":", 2)
+		if len(splitResult) != 2 {
+			response := gl.EmbedToResponse(gl.EmbedMessage(gl.MsgUnknownCommand))
 			s.InteractionRespond(i.Interaction, response)
-
-		default:
-			logger.Warnf("Unhandled interaction type: %d", i.Type)
 			return
 		}
-	})
+
+		cmd, arg := splitResult[0], splitResult[1]
+		handler, found := bs.cmdMap[cmd]
+		if !found {
+			response := gl.EmbedToResponse(gl.EmbedMessage(gl.MsgUnknownCommand))
+			s.InteractionRespond(i.Interaction, response)
+			return
+		}
+
+		response := handler(arg, i)
+		if response != nil {
+			resp := gl.EmbedToResponse(response)
+			s.InteractionRespond(i.Interaction, resp)
+		}
+		return
+
+	case discordgo.InteractionApplicationCommand:
+		name := i.ApplicationCommandData().Name
+		botCommand, found := bs.HandlersMap()[name]
+		if !found {
+			response := gl.EmbedToResponse(gl.EmbedMessage(gl.MsgUnknownCommand))
+			s.InteractionRespond(i.Interaction, response)
+			return
+		}
+
+		args := []string{}
+		for _, opt := range i.ApplicationCommandData().Options {
+			if opt.Type == discordgo.ApplicationCommandOptionString {
+				args = append(args, opt.StringValue())
+			}
+		}
+
+		m := gl.InteractionToMessageCreate(i, args)
+		response := gl.EmbedToResponse(botCommand.Handler(args, m))
+		s.InteractionRespond(i.Interaction, response)
+
+	default:
+		bs.logger.Warnf("Unhandled interaction type: %d", i.Type)
+		return
+	}
 }

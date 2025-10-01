@@ -44,11 +44,13 @@ const (
 	MsgInvalidTrackNumber = "Invalid track selection."
 	MsgCantFindSearch     = "Could not find your previous search, please try again."
 
-	defaultPrefix                = "$"
-	defaultColor                 = 0xFF73A8
-	AlbumCoverSize               = "xl" // "small", "medium", "big", "xl"
-	MaxSearchResults             = 9
-	DiscordEmbedDescriptionLimit = 4096
+	defaultPrefix                  = "$"
+	defaultColor                   = 0xFF73A8
+	AlbumCoverSize                 = "xl" // "small", "medium", "big", "xl"
+	MaxSearchResults               = 9
+	DiscordEmbedDescriptionLimit   = 4096
+	DefaultSearchOptionName        = "input"
+	DefaultSearchOptionDescription = "command arguments"
 
 	LogLevel = mylog.DEBUG
 )
@@ -85,7 +87,7 @@ type SlashOption struct {
 }
 
 type BotCommand struct {
-	Handler      func([]string, *discordgo.Session, *discordgo.MessageCreate) *discordgo.MessageSend
+	Handler      func([]string, *discordgo.MessageCreate) *discordgo.MessageSend
 	ShortCode    string
 	Alias        string
 	Help         string

@@ -10,8 +10,8 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-func (ms *MusicService) HandlePlay(args []string, s *discordgo.Session, m *discordgo.MessageCreate) *discordgo.MessageSend {
-	r, _, vc := gl.GetVoiceChannelID(s, m.Member, m.GuildID, m.Author.ID)
+func (ms *MusicService) HandlePlay(args []string, m *discordgo.MessageCreate) *discordgo.MessageSend {
+	r, _, vc := gl.GetVoiceChannelID(ms.session, m.Member, m.GuildID, m.Author.ID)
 	if r != "" {
 		return gl.EmbedMessage(r)
 	}
@@ -20,7 +20,7 @@ func (ms *MusicService) HandlePlay(args []string, s *discordgo.Session, m *disco
 		return gl.EmbedMessage(gl.MsgNoKeywords)
 	}
 
-	voice, err := ms.GetVoiceConnection(vc, s, m.GuildID)
+	voice, err := ms.GetVoiceConnection(vc, ms.session, m.GuildID)
 	if err != nil {
 		return gl.EmbedMessage(err.Error())
 	}
@@ -53,7 +53,7 @@ func (ms *MusicService) HandlePlay(args []string, s *discordgo.Session, m *disco
 	return gl.EmbedTrackMessage(track)
 }
 
-func (ms *MusicService) HandleSearch(args []string, s *discordgo.Session, m *discordgo.MessageCreate) *discordgo.MessageSend {
+func (ms *MusicService) HandleSearch(args []string, m *discordgo.MessageCreate) *discordgo.MessageSend {
 	q := strings.Join(args, " ")
 	if q == "" {
 		return gl.EmbedMessage(gl.MsgNoKeywords)
@@ -113,7 +113,7 @@ func (ms *MusicService) HandleSearch(args []string, s *discordgo.Session, m *dis
 	return msg
 }
 
-func (ms *MusicService) HandleLyrics(args []string, s *discordgo.Session, m *discordgo.MessageCreate) *discordgo.MessageSend {
+func (ms *MusicService) HandleLyrics(args []string, m *discordgo.MessageCreate) *discordgo.MessageSend {
 	q := ms.GetQueue(m.GuildID)
 	if q == nil || q.nowPlaying == nil {
 		return gl.EmbedMessage(gl.MsgNothingIsPlaying)
@@ -138,8 +138,8 @@ func (ms *MusicService) HandleLyrics(args []string, s *discordgo.Session, m *dis
 	return response
 }
 
-func (ms *MusicService) HandleSkip(args []string, s *discordgo.Session, m *discordgo.MessageCreate) *discordgo.MessageSend {
-	r, g, vc := gl.GetVoiceChannelID(s, m.Member, m.GuildID, m.Author.ID)
+func (ms *MusicService) HandleSkip(args []string, m *discordgo.MessageCreate) *discordgo.MessageSend {
+	r, g, vc := gl.GetVoiceChannelID(ms.session, m.Member, m.GuildID, m.Author.ID)
 	if r != "" {
 		return gl.EmbedMessage(r)
 	}
@@ -161,7 +161,7 @@ func (ms *MusicService) HandleSkip(args []string, s *discordgo.Session, m *disco
 	return gl.EmbedMessage(gl.MsgSkipped)
 }
 
-func (ms *MusicService) HandleQueue(args []string, s *discordgo.Session, m *discordgo.MessageCreate) *discordgo.MessageSend {
+func (ms *MusicService) HandleQueue(args []string, m *discordgo.MessageCreate) *discordgo.MessageSend {
 	q := ms.GetQueue(m.GuildID)
 	if q == nil {
 		return gl.EmbedMessage(gl.MsgNothingIsPlaying)
@@ -175,8 +175,8 @@ func (ms *MusicService) HandleQueue(args []string, s *discordgo.Session, m *disc
 	return gl.EmbedMessage(out)
 }
 
-func (ms *MusicService) HandleClear(args []string, s *discordgo.Session, m *discordgo.MessageCreate) *discordgo.MessageSend {
-	r, g, vc := gl.GetVoiceChannelID(s, m.Member, m.GuildID, m.Author.ID)
+func (ms *MusicService) HandleClear(args []string, m *discordgo.MessageCreate) *discordgo.MessageSend {
+	r, g, vc := gl.GetVoiceChannelID(ms.session, m.Member, m.GuildID, m.Author.ID)
 	if r != "" {
 		return gl.EmbedMessage(r)
 	}
@@ -195,8 +195,8 @@ func (ms *MusicService) HandleClear(args []string, s *discordgo.Session, m *disc
 	return gl.EmbedMessage(gl.MsgCleared)
 }
 
-func (ms *MusicService) HandleLeave(args []string, s *discordgo.Session, m *discordgo.MessageCreate) *discordgo.MessageSend {
-	r, g, vc := gl.GetVoiceChannelID(s, m.Member, m.GuildID, m.Author.ID)
+func (ms *MusicService) HandleLeave(args []string, m *discordgo.MessageCreate) *discordgo.MessageSend {
+	r, g, vc := gl.GetVoiceChannelID(ms.session, m.Member, m.GuildID, m.Author.ID)
 	if r != "" {
 		return gl.EmbedMessage(r)
 	}
@@ -214,7 +214,7 @@ func (ms *MusicService) HandleLeave(args []string, s *discordgo.Session, m *disc
 	return gl.EmbedMessage(gl.MsgLeft)
 }
 
-func (ms *MusicService) HandleChooseTrack(arg string, s *discordgo.Session, i *discordgo.InteractionCreate) *discordgo.MessageSend {
+func (ms *MusicService) HandleChooseTrack(arg string, i *discordgo.InteractionCreate) *discordgo.MessageSend {
 	trackIdx, err := strconv.Atoi(arg)
 	if err != nil || trackIdx < 0 {
 		return gl.EmbedMessage(gl.MsgInvalidTrackNumber)
@@ -229,17 +229,17 @@ func (ms *MusicService) HandleChooseTrack(arg string, s *discordgo.Session, i *d
 	if trackIdx == 0 {
 		// Cancel selection silently
 		delete(ms.Searches, key)
-		s.ChannelMessageDelete(i.ChannelID, i.Message.ID)
+		ms.session.ChannelMessageDelete(i.ChannelID, i.Message.ID)
 		return nil
 	}
 
 	track := &results[trackIdx-1]
-	r, _, vc := gl.GetVoiceChannelID(s, i.Member, i.GuildID, i.Member.User.ID)
+	r, _, vc := gl.GetVoiceChannelID(ms.session, i.Member, i.GuildID, i.Member.User.ID)
 	if r != "" {
 		return gl.EmbedMessage(r)
 	}
 
-	voice, err := ms.GetVoiceConnection(vc, s, i.GuildID)
+	voice, err := ms.GetVoiceConnection(vc, ms.session, i.GuildID)
 	if err != nil {
 		return gl.EmbedMessage(err.Error())
 	}
@@ -247,7 +247,7 @@ func (ms *MusicService) HandleChooseTrack(arg string, s *discordgo.Session, i *d
 	q := ms.GetOrCreateQueue(voice, vc)
 	q.AddTrack(ms, track)
 	delete(ms.Searches, key)
-	defer s.ChannelMessageDelete(i.ChannelID, i.Message.ID)
+	defer ms.session.ChannelMessageDelete(i.ChannelID, i.Message.ID)
 
 	return gl.EmbedTrackMessage(track)
 }

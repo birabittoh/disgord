@@ -13,6 +13,7 @@ import (
 )
 
 type MusicService struct {
+	session  *discordgo.Session
 	Ctx      context.Context
 	Client   *miri.Client
 	Logger   *mylog.Logger
@@ -20,21 +21,23 @@ type MusicService struct {
 	Searches map[string][]miri.SongResult
 }
 
-func NewMusicService(ctx context.Context) (*MusicService, error) {
+func NewMusicService(ctx context.Context, session *discordgo.Session) (*MusicService, error) {
 	cfg, err := deezer.NewConfig(gl.Config.Values.ArlCookie, gl.Config.Values.SecretKey)
 	if err != nil {
 		return nil, err
 	}
+
 	cfg.Timeout = 30 * time.Minute // long timeout for music streaming
 	client, err := miri.New(ctx, cfg)
 	if err != nil {
 		return nil, err
 	}
-	logger := mylog.NewLogger(os.Stdout, "music", gl.LogLevel)
+
 	return &MusicService{
+		session:  session,
 		Ctx:      ctx,
 		Client:   client,
-		Logger:   logger,
+		Logger:   mylog.NewLogger(os.Stdout, "music", gl.LogLevel),
 		Queues:   make(map[string]*Queue),
 		Searches: make(map[string][]miri.SongResult),
 	}, nil

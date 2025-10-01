@@ -1,6 +1,8 @@
 package src
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"os"
 	"slices"
@@ -13,91 +15,141 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-var (
-	logger = mylog.NewLogger(os.Stdout, "main", gl.LogLevel)
-
-	cmdMap       map[string]func(arg string, s *discordgo.Session, i *discordgo.InteractionCreate) *discordgo.MessageSend
+type BotService struct {
+	session      *discordgo.Session
+	logger       *mylog.Logger
+	cmdMap       map[string]func(arg string, i *discordgo.InteractionCreate) *discordgo.MessageSend
 	handlersMap  map[string]gl.BotCommand
-	aliasMap     = map[string]string{}
+	aliasMap     map[string]string
 	commandNames []string
+	ms           *music.MusicService
+	ss           *shoot.ShootService
+}
 
-	input = []gl.SlashOption{
+func NewBotService(cfg gl.MyConfig) (bs *BotService, err error) {
+	ctx := context.Background()
+
+	bs = &BotService{
+		logger:   mylog.NewLogger(os.Stdout, "main", gl.LogLevel),
+		aliasMap: make(map[string]string),
+	}
+
+	bs.session, err = discordgo.New("Bot " + cfg.Token)
+	if err != nil {
+		return nil, errors.New("could not create bot session: " + err.Error())
+	}
+
+	bs.ss = shoot.NewShootService(bs.session)
+	bs.ms, err = music.NewMusicService(ctx, bs.session)
+	if err != nil {
+		return nil, errors.New("could not initialize music service: " + err.Error())
+	}
+
+	bs.initHandlers()
+	bs.session.AddHandler(bs.messageHandler)
+	bs.session.AddHandler(bs.readyHandler)
+	bs.session.AddHandler(bs.slashHandler)
+	bs.session.AddHandler(bs.ms.HandleBotVSU)
+
+	return bs, nil
+}
+
+func (bs *BotService) Start() error {
+	err := bs.session.Open()
+	if err != nil {
+		return errors.New("could not open session: " + err.Error())
+	}
+
+	go func() {
+		err := bs.registerSlashCommands()
+		if err != nil {
+			bs.logger.Errorf("could not register slash commands: %s", err)
+		}
+	}()
+	return nil
+}
+
+func (bs *BotService) Stop() {
+	if err := bs.session.Close(); err != nil {
+		bs.logger.Errorf("could not close session: %s", err)
+	}
+}
+
+func (bs *BotService) HandlersMap() map[string]gl.BotCommand {
+	return bs.handlersMap
+}
+
+func (bs *BotService) initHandlers() {
+	defaultSearchOptions := []gl.SlashOption{
 		{
 			Type:        discordgo.ApplicationCommandOptionString,
-			Name:        "input",
-			Description: "command arguments",
+			Name:        gl.DefaultSearchOptionName,
+			Description: gl.DefaultSearchOptionDescription,
 			Required:    true,
 		},
 	}
-)
 
-// Exported getter for handlersMap
-func HandlersMap() map[string]gl.BotCommand {
-	return handlersMap
-}
-
-func InitHandlers(ms *music.MusicService, ss *shoot.ShootService) {
-	handlersMap = map[string]gl.BotCommand{
-		"echo":   {ShortCode: "e", Handler: handleEcho, Help: "echoes a message", SlashOptions: input},
-		"prefix": {Handler: handlePrefix, Help: "sets the bot's prefix for this server", SlashOptions: input},
-		"play":   {ShortCode: "p", Handler: ms.HandlePlay, Help: "plays a song", SlashOptions: input},
-		"search": {ShortCode: "f", Handler: ms.HandleSearch, Help: "searches for a song", SlashOptions: input},
-		"lyrics": {ShortCode: "l", Handler: ms.HandleLyrics, Help: "shows the lyrics of the current song"},
-		"skip":   {ShortCode: "s", Handler: ms.HandleSkip, Help: "skips the current song"},
-		"queue":  {ShortCode: "q", Handler: ms.HandleQueue, Help: "shows the current queue"},
-		"clear":  {ShortCode: "c", Handler: ms.HandleClear, Help: "clears the current queue"},
-		"leave":  {Alias: "stop", Handler: ms.HandleLeave, Help: "leaves the voice channel"},
-		"shoot":  {Alias: "bang", Handler: ss.HandleShoot, Help: "shoots a random user in your voice channel"},
-		"help":   {ShortCode: "h", Handler: handleHelp, Help: "shows this help message"},
+	bs.handlersMap = map[string]gl.BotCommand{
+		"echo":   {ShortCode: "e", Handler: bs.handleEcho, Help: "echoes a message", SlashOptions: defaultSearchOptions},
+		"prefix": {Handler: bs.handlePrefix, Help: "sets the bot's prefix for this server", SlashOptions: defaultSearchOptions},
+		"play":   {ShortCode: "p", Handler: bs.ms.HandlePlay, Help: "plays a song", SlashOptions: defaultSearchOptions},
+		"search": {ShortCode: "f", Handler: bs.ms.HandleSearch, Help: "searches for a song", SlashOptions: defaultSearchOptions},
+		"lyrics": {ShortCode: "l", Handler: bs.ms.HandleLyrics, Help: "shows the lyrics of the current song"},
+		"skip":   {ShortCode: "s", Handler: bs.ms.HandleSkip, Help: "skips the current song"},
+		"queue":  {ShortCode: "q", Handler: bs.ms.HandleQueue, Help: "shows the current queue"},
+		"clear":  {ShortCode: "c", Handler: bs.ms.HandleClear, Help: "clears the current queue"},
+		"leave":  {Alias: "stop", Handler: bs.ms.HandleLeave, Help: "leaves the voice channel"},
+		"shoot":  {Alias: "bang", Handler: bs.ss.HandleShoot, Help: "shoots a random user in your voice channel"},
+		"help":   {ShortCode: "h", Handler: bs.handleHelp, Help: "shows this help message"},
 	}
 
-	for command, botCommand := range handlersMap {
+	for command, botCommand := range bs.handlersMap {
 		if botCommand.ShortCode != "" {
-			aliasMap[botCommand.ShortCode] = command
+			bs.aliasMap[botCommand.ShortCode] = command
 		}
 
 		if botCommand.Alias != "" {
-			aliasMap[botCommand.Alias] = command
+			bs.aliasMap[botCommand.Alias] = command
 		}
 	}
 
-	commandNames = make([]string, 0, len(handlersMap))
-	for command := range handlersMap {
-		commandNames = append(commandNames, command)
+	bs.commandNames = make([]string, 0, len(bs.handlersMap))
+	for command := range bs.handlersMap {
+		bs.commandNames = append(bs.commandNames, command)
 	}
 
-	slices.Sort(commandNames)
+	slices.Sort(bs.commandNames)
 
-	cmdMap = map[string]func(arg string, s *discordgo.Session, i *discordgo.InteractionCreate) *discordgo.MessageSend{
-		"choose_track": ms.HandleChooseTrack,
+	bs.cmdMap = map[string]func(arg string, i *discordgo.InteractionCreate) *discordgo.MessageSend{
+		"choose_track": bs.ms.HandleChooseTrack,
 	}
 }
 
-func HandleCommand(s *discordgo.Session, m *discordgo.MessageCreate) (response *discordgo.MessageSend, ok bool, err error) {
+func (bs *BotService) handleCommand(m *discordgo.MessageCreate) (response *discordgo.MessageSend, ok bool, err error) {
 	command, args, ok := gl.ParseUserMessage(m.Content, m.GuildID)
 	if !ok {
 		return
 	}
 
-	if aliasTo, isAlias := aliasMap[command]; isAlias {
+	if aliasTo, isAlias := bs.aliasMap[command]; isAlias {
 		command = aliasTo
 	}
 
-	botCommand, found := handlersMap[command]
+	botCommand, found := bs.handlersMap[command]
 	if !found {
 		response = gl.EmbedMessage(fmt.Sprintf(gl.MsgUnknownCommand, gl.FormatCommand(command, m.GuildID)))
 		return
 	}
 
-	response = botCommand.Handler(args, s, m)
+	response = botCommand.Handler(args, m)
 	return
 }
 
-func handleEcho(args []string, s *discordgo.Session, m *discordgo.MessageCreate) *discordgo.MessageSend {
+func (bs *BotService) handleEcho(args []string, m *discordgo.MessageCreate) *discordgo.MessageSend {
 	return gl.EmbedMessage(strings.Join(args, " "))
 }
 
-func handlePrefix(args []string, s *discordgo.Session, m *discordgo.MessageCreate) *discordgo.MessageSend {
+func (bs *BotService) handlePrefix(args []string, m *discordgo.MessageCreate) *discordgo.MessageSend {
 	var content string
 	if len(args) == 0 {
 		content = fmt.Sprintf(gl.MsgUsagePrefix, gl.FormatCommand("prefix", m.GuildID))
@@ -113,11 +165,11 @@ func handlePrefix(args []string, s *discordgo.Session, m *discordgo.MessageCreat
 	return gl.EmbedMessage(content)
 }
 
-func handleHelp(args []string, s *discordgo.Session, m *discordgo.MessageCreate) *discordgo.MessageSend {
+func (bs *BotService) handleHelp(args []string, m *discordgo.MessageCreate) *discordgo.MessageSend {
 	helpText := gl.MsgHelp
 
-	for _, command := range commandNames {
-		helpText += fmt.Sprintf(gl.MsgUnorderedList, handlersMap[command].FormatHelp(command, m.GuildID))
+	for _, command := range bs.commandNames {
+		helpText += fmt.Sprintf(gl.MsgUnorderedList, bs.handlersMap[command].FormatHelp(command, m.GuildID))
 	}
 
 	return gl.EmbedMessage(helpText)
