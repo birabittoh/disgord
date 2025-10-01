@@ -6,6 +6,7 @@ services:
     image: ghcr.io/birabittoh/disgord:main
     container_name: 'disgord'
     restart: unless-stopped
+    env_file:
+      - .env
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - ./config.json:/app/config.json

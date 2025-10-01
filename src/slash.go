@@ -69,7 +69,7 @@ func (bs *BotService) registerSlashCommands() error {
 			}
 		}
 		if found == nil {
-			created, err := bs.session.ApplicationCommandCreate(bs.config.Values.ApplicationID, "", desiredCmd)
+			created, err := bs.session.ApplicationCommandCreate(bs.config.ApplicationID, "", desiredCmd)
 			if err != nil {
 				return err
 			}
@@ -87,7 +87,7 @@ func (bs *BotService) registerSlashCommands() error {
 				}
 			}
 			if changed {
-				updated, err := bs.session.ApplicationCommandEdit(bs.config.Values.ApplicationID, "", found.ID, desiredCmd)
+				updated, err := bs.session.ApplicationCommandEdit(bs.config.ApplicationID, "", found.ID, desiredCmd)
 				if err != nil {
 					return err
 				}

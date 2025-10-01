@@ -8,9 +8,9 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/birabittoh/disgord/src/config"
 	gl "github.com/birabittoh/disgord/src/globals"
 	"github.com/birabittoh/disgord/src/music"
-	"github.com/birabittoh/disgord/src/myconfig"
 	"github.com/birabittoh/disgord/src/mylog"
 	"github.com/birabittoh/disgord/src/shoot"
 	"github.com/bwmarrin/discordgo"
@@ -18,7 +18,7 @@ import (
 
 type BotService struct {
 	session      *discordgo.Session
-	config       *myconfig.Config[gl.MyConfig]
+	config       *config.Config
 	logger       *mylog.Logger
 	cmdMap       map[string]func(arg string, i *discordgo.InteractionCreate) *discordgo.MessageSend
 	handlersMap  map[string]gl.BotCommand
@@ -28,7 +28,7 @@ type BotService struct {
 	ss           *shoot.ShootService
 }
 
-func NewBotService(cfg *myconfig.Config[gl.MyConfig]) (bs *BotService, err error) {
+func NewBotService(cfg *config.Config) (bs *BotService, err error) {
 	ctx := context.Background()
 
 	bs = &BotService{
@@ -37,13 +37,13 @@ func NewBotService(cfg *myconfig.Config[gl.MyConfig]) (bs *BotService, err error
 		aliasMap: make(map[string]string),
 	}
 
-	bs.session, err = discordgo.New("Bot " + cfg.Values.Token)
+	bs.session, err = discordgo.New("Bot " + cfg.Token)
 	if err != nil {
 		return nil, errors.New("could not create bot session: " + err.Error())
 	}
 
-	bs.ss = shoot.NewShootService(bs.session, cfg.Values.MagazineSize, cfg.Values.BustProbability)
-	bs.ms, err = music.NewMusicService(ctx, bs.session, bs.config.Values.ArlCookie, bs.config.Values.SecretKey)
+	bs.ss = shoot.NewShootService(bs.session, cfg.MagazineSize, cfg.BustProbability)
+	bs.ms, err = music.NewMusicService(ctx, bs.session, bs.config.ArlCookie, bs.config.SecretKey)
 	if err != nil {
 		return nil, errors.New("could not initialize music service: " + err.Error())
 	}
@@ -94,7 +94,6 @@ func (bs *BotService) initHandlers() {
 
 	bs.handlersMap = map[string]gl.BotCommand{
 		"echo":   {ShortCode: "e", Handler: bs.handleEcho, Help: "echoes a message", SlashOptions: defaultSearchOptions},
-		"prefix": {Handler: bs.handlePrefix, Help: "sets the bot's prefix for this server", SlashOptions: defaultSearchOptions},
 		"play":   {ShortCode: "p", Handler: bs.ms.HandlePlay, Help: "plays a song", SlashOptions: defaultSearchOptions},
 		"search": {ShortCode: "f", Handler: bs.ms.HandleSearch, Help: "searches for a song", SlashOptions: defaultSearchOptions},
 		"lyrics": {ShortCode: "l", Handler: bs.ms.HandleLyrics, Help: "shows the lyrics of the current song"},
@@ -129,7 +128,7 @@ func (bs *BotService) initHandlers() {
 }
 
 func (bs *BotService) handleCommand(m *discordgo.MessageCreate) (response *discordgo.MessageSend, ok bool, err error) {
-	command, args, ok := gl.ParseUserMessage(m.Content, m.GuildID)
+	command, args, ok := gl.ParseUserMessage(m.Content)
 	if !ok {
 		return
 	}
@@ -153,22 +152,6 @@ func (bs *BotService) handleEcho(args []string, m *discordgo.MessageCreate) *dis
 		return nil
 	}
 	return gl.EmbedMessage(strings.Join(args, " "))
-}
-
-func (bs *BotService) handlePrefix(args []string, m *discordgo.MessageCreate) *discordgo.MessageSend {
-	var content string
-	if len(args) == 0 {
-		content = fmt.Sprintf(gl.MsgUsagePrefix, gl.FormatCommand("prefix", m.GuildID))
-	} else {
-		newPrefix := args[0]
-		if len(newPrefix) > 10 {
-			content = gl.MsgPrefixTooLong
-		} else {
-			gl.SetPrefix(m.GuildID, newPrefix)
-			content = fmt.Sprintf(gl.MsgPrefixSet, newPrefix)
-		}
-	}
-	return gl.EmbedMessage(content)
 }
 
 func (bs *BotService) handleHelp(args []string, m *discordgo.MessageCreate) *discordgo.MessageSend {

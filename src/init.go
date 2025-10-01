@@ -6,9 +6,10 @@ import (
 	"os/signal"
 	"path/filepath"
 
+	"github.com/birabittoh/disgord/src/config"
 	gl "github.com/birabittoh/disgord/src/globals"
-	"github.com/birabittoh/disgord/src/myconfig"
 	"github.com/bwmarrin/discordgo"
+	"github.com/joho/godotenv"
 )
 
 // don't remove the 's' parameter
@@ -66,7 +67,9 @@ func getCommitID() string {
 }
 
 func Main() (err error) {
-	gl.Config, err = myconfig.New[gl.MyConfig]("config.json")
+	godotenv.Load()
+
+	gl.Config, err = config.New()
 	if err != nil {
 		return errors.New("could not load config: " + err.Error())
 	}

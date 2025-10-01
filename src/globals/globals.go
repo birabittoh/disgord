@@ -3,7 +3,7 @@ package globals
 import (
 	"os"
 
-	"github.com/birabittoh/disgord/src/myconfig"
+	"github.com/birabittoh/disgord/src/config"
 	"github.com/birabittoh/disgord/src/mylog"
 	"github.com/bwmarrin/discordgo"
 )
@@ -44,8 +44,6 @@ const (
 	MsgInvalidTrackNumber = "Invalid track selection."
 	MsgCantFindSearch     = "Could not find your previous search, please try again."
 
-	defaultPrefix                  = "$"
-	defaultColor                   = 0xFF73A8
 	AlbumCoverSize                 = "xl" // "small", "medium", "big", "xl"
 	MaxSearchResults               = 9
 	DiscordEmbedDescriptionLimit   = 4096
@@ -58,27 +56,9 @@ const (
 var (
 	CommitID string
 
-	Config *myconfig.Config[MyConfig]
+	Config *config.Config
 	logger = mylog.NewLogger(os.Stdout, "globals", LogLevel)
 )
-
-type KeyValuePair struct {
-	Name  string `json:"name"`
-	Value string `json:"value"`
-}
-
-type MyConfig struct {
-	ApplicationID string `json:"applicationID"`
-	Token         string `json:"token"`
-	ArlCookie     string `json:"arlCookie"`
-	SecretKey     string `json:"secretKey"`
-
-	Prefixes []KeyValuePair `json:"prefixes"`
-	//Radios   []KeyValuePair `json:"radios"`
-
-	MagazineSize    uint `json:"magazineSize"`
-	BustProbability uint `json:"bustProbability"`
-}
 
 type SlashOption struct {
 	Name        string

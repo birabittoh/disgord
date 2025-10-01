@@ -3,6 +3,8 @@ github.com/birabittoh/miri v1.4.9/go.mod h1:sWHr/FTg7hcScTFaSZHpu4V6F1+0dQEph+4U
 github.com/google/go-cmp v0.6.0/go.mod h1:17dUlkBOakJ0+DkrSSNjCkIjxS6bF9zb3elmeNGIjoY=
 github.com/gorilla/websocket v1.5.3 h1:saDtZ6Pbx/0u+bgYQ3q96pZgCzfhKXGPqt7kZ72aNNg=
 github.com/gorilla/websocket v1.5.3/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=
+github.com/joho/godotenv v1.5.1 h1:7eLL/+HRGLY0ldzfGMeQkb7vMd0as4CfYvUVzLqw0N0=
+github.com/joho/godotenv v1.5.1/go.mod h1:f4LDr5Voq0i2e/R5DDNOoa2zzDfwtkZa6DnEwAbqwq4=
 github.com/ozraru/discordgo v0.26.2-0.20250118163132-f992cd170161 h1:b8JWOHTftwH47w1oIO6NDn/7BS0Y8ZWcPnGBhdNqP7w=
 github.com/ozraru/discordgo v0.26.2-0.20250118163132-f992cd170161/go.mod h1:WvuoyRcWAGldq39BvI/7nPNkxEjIGMdAXLZxX+KpM0c=
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=

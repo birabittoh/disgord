@@ -47,7 +47,7 @@ func (bc BotCommand) FormatHelp(command, guildID string) string {
 }
 
 func FormatCommand(command, guildID string) string {
-	return fmt.Sprintf("`%s%s`", GetPrefix(guildID), command)
+	return fmt.Sprintf("`%s%s`", GetPrefix(), command)
 }
 
 func FormatTrackLine(v *miri.SongResult) string {
@@ -55,8 +55,8 @@ func FormatTrackLine(v *miri.SongResult) string {
 	return fmt.Sprintf("%s - **%s** (`%s`)", v.Artist.Name, v.Title, duration.String())
 }
 
-func ParseUserMessage(messageContent, guildID string) (command string, args []string, ok bool) {
-	after, found := strings.CutPrefix(messageContent, GetPrefix(guildID))
+func ParseUserMessage(messageContent string) (command string, args []string, ok bool) {
+	after, found := strings.CutPrefix(messageContent, GetPrefix())
 	if !found {
 		return
 	}
@@ -66,40 +66,8 @@ func ParseUserMessage(messageContent, guildID string) (command string, args []st
 	return command, userInput[1:], len(command) > 0
 }
 
-func GetPrefix(guildID string) string {
-	for _, prefix := range Config.Values.Prefixes {
-		if prefix.Name == guildID {
-			return prefix.Value
-		}
-	}
-
-	Config.Values.Prefixes = append(Config.Values.Prefixes, KeyValuePair{Name: guildID, Value: defaultPrefix})
-	err := Config.Save()
-	if err != nil {
-		logger.Errorf("could not save config: %s", err)
-	}
-	return defaultPrefix
-}
-
-func SetPrefix(guildID, prefixValue string) string {
-	var found bool
-	for i, prefix := range Config.Values.Prefixes {
-		if prefix.Name == guildID {
-			Config.Values.Prefixes[i].Value = prefixValue
-			found = true
-			break
-		}
-	}
-
-	if !found {
-		Config.Values.Prefixes = append(Config.Values.Prefixes, KeyValuePair{Name: guildID, Value: prefixValue})
-	}
-
-	err := Config.Save()
-	if err != nil {
-		logger.Errorf("could not save config: %s", err)
-	}
-	return defaultPrefix
+func GetPrefix() string {
+	return Config.Prefix
 }
 
 func GetPendingSearchKey(channelID, authorID string) string {
@@ -112,7 +80,7 @@ func EmbedMessage(content string) *discordgo.MessageSend {
 		Embeds: []*discordgo.MessageEmbed{
 			{
 				Description: content,
-				Color:       defaultColor,
+				Color:       Config.Color,
 			},
 		},
 	}
