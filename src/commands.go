@@ -1,7 +1,6 @@
 package src
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -17,48 +16,46 @@ import (
 )
 
 type BotService struct {
-	session      *discordgo.Session
-	config       *config.Config
+	us *gl.UtilsService
+	ms *music.MusicService
+	ss *shoot.ShootService
+
 	logger       *mylog.Logger
 	cmdMap       map[string]func(arg string, i *discordgo.InteractionCreate) *discordgo.MessageSend
 	handlersMap  map[string]gl.BotCommand
 	aliasMap     map[string]string
 	commandNames []string
-	ms           *music.MusicService
-	ss           *shoot.ShootService
 }
 
 func NewBotService(cfg *config.Config) (bs *BotService, err error) {
-	ctx := context.Background()
-
 	bs = &BotService{
-		config:   cfg,
-		logger:   mylog.New(os.Stdout, "main", cfg.LogLevel),
+		us:       gl.NewUtilsService(cfg),
 		aliasMap: make(map[string]string),
 	}
+	bs.logger = mylog.New(os.Stdout, "main", bs.us.Config.LogLevel)
 
-	bs.session, err = discordgo.New("Bot " + cfg.Token)
+	bs.us.Session, err = discordgo.New("Bot " + bs.us.Config.Token)
 	if err != nil {
 		return nil, errors.New("could not create bot session: " + err.Error())
 	}
 
-	bs.ss = shoot.NewShootService(bs.session, cfg)
-	bs.ms, err = music.NewMusicService(ctx, bs.session, bs.config)
+	bs.ss = shoot.NewShootService(bs.us)
+	bs.ms, err = music.NewMusicService(bs.us)
 	if err != nil {
 		return nil, errors.New("could not initialize music service: " + err.Error())
 	}
 
 	bs.initHandlers()
-	bs.session.AddHandler(bs.messageHandler)
-	bs.session.AddHandler(bs.readyHandler)
-	bs.session.AddHandler(bs.slashHandler)
-	bs.session.AddHandler(bs.ms.HandleBotVSU)
+	bs.us.Session.AddHandler(bs.messageHandler)
+	bs.us.Session.AddHandler(bs.readyHandler)
+	bs.us.Session.AddHandler(bs.slashHandler)
+	bs.us.Session.AddHandler(bs.ms.HandleBotVSU)
 
 	return bs, nil
 }
 
 func (bs *BotService) Start() error {
-	err := bs.session.Open()
+	err := bs.us.Session.Open()
 	if err != nil {
 		return errors.New("could not open session: " + err.Error())
 	}
@@ -73,7 +70,7 @@ func (bs *BotService) Start() error {
 }
 
 func (bs *BotService) Stop() {
-	if err := bs.session.Close(); err != nil {
+	if err := bs.us.Session.Close(); err != nil {
 		bs.logger.Errorf("could not close session: %s", err)
 	}
 }
@@ -128,11 +125,11 @@ func (bs *BotService) initHandlers() {
 }
 
 func (bs *BotService) handleCommand(m *discordgo.MessageCreate) (response *discordgo.MessageSend, ok bool, err error) {
-	if bs.config.DisablePrefixCommands {
+	if bs.us.Config.DisablePrefixCommands {
 		return nil, false, nil
 	}
 
-	command, args, ok := gl.ParseUserMessage(m.Content)
+	command, args, ok := bs.us.ParseUserMessage(m.Content)
 	if !ok {
 		return
 	}
@@ -143,7 +140,7 @@ func (bs *BotService) handleCommand(m *discordgo.MessageCreate) (response *disco
 
 	botCommand, found := bs.handlersMap[command]
 	if !found {
-		response = gl.EmbedMessage(fmt.Sprintf(gl.MsgUnknownCommand, gl.FormatCommand(command, m.GuildID)))
+		response = bs.us.EmbedMessage(fmt.Sprintf(gl.MsgUnknownCommand, bs.us.FormatCommand(command)))
 		return
 	}
 
@@ -155,15 +152,15 @@ func (bs *BotService) handleEcho(args []string, m *discordgo.MessageCreate) *dis
 	if len(args) == 0 {
 		return nil
 	}
-	return gl.EmbedMessage(strings.Join(args, " "))
+	return bs.us.EmbedMessage(strings.Join(args, " "))
 }
 
 func (bs *BotService) handleHelp(args []string, m *discordgo.MessageCreate) *discordgo.MessageSend {
 	helpText := gl.MsgHelp
 
 	for _, command := range bs.commandNames {
-		helpText += fmt.Sprintf(gl.MsgUnorderedList, bs.handlersMap[command].FormatHelp(command, m.GuildID))
+		helpText += fmt.Sprintf(gl.MsgUnorderedList, bs.us.FormatHelp(command, bs.handlersMap[command]))
 	}
 
-	return gl.EmbedMessage(helpText)
+	return bs.us.EmbedMessage(helpText)
 }

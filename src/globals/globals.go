@@ -1,7 +1,6 @@
 package globals
 
 import (
-	"github.com/birabittoh/disgord/src/config"
 	"github.com/bwmarrin/discordgo"
 )
 
@@ -46,11 +45,7 @@ const (
 	DefaultSearchOptionDescription = "command arguments"
 )
 
-var (
-	CommitID string
-
-	Config *config.Config
-)
+var CommitID string
 
 type SlashOption struct {
 	Name        string

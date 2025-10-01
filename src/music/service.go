@@ -1,11 +1,10 @@
 package music
 
 import (
-	"context"
 	"os"
 	"time"
 
-	"github.com/birabittoh/disgord/src/config"
+	"github.com/birabittoh/disgord/src/globals"
 	"github.com/birabittoh/disgord/src/mylog"
 	"github.com/birabittoh/miri"
 	"github.com/birabittoh/miri/deezer"
@@ -13,41 +12,38 @@ import (
 )
 
 type MusicService struct {
-	session          *discordgo.Session
-	Ctx              context.Context
-	Client           *miri.Client
-	Logger           *mylog.Logger
-	Queues           map[string]*Queue
-	Searches         map[string][]miri.SongResult
-	maxSearchResults uint64
+	us *globals.UtilsService
+
+	Client   *miri.Client
+	Logger   *mylog.Logger
+	Queues   map[string]*Queue
+	Searches map[string][]miri.SongResult
 }
 
-func NewMusicService(ctx context.Context, session *discordgo.Session, cfg *config.Config) (*MusicService, error) {
-	dCfg, err := deezer.NewConfig(cfg.ArlCookie, cfg.SecretKey)
+func NewMusicService(us *globals.UtilsService) (*MusicService, error) {
+	dCfg, err := deezer.NewConfig(us.Config.ArlCookie, us.Config.SecretKey)
 	if err != nil {
 		return nil, err
 	}
 
 	dCfg.Timeout = 30 * time.Minute // long timeout for music streaming
-	client, err := miri.New(ctx, dCfg)
+	client, err := miri.New(us.Ctx, dCfg)
 	if err != nil {
 		return nil, err
 	}
 
 	return &MusicService{
-		session:          session,
-		Ctx:              ctx,
-		Client:           client,
-		Logger:           mylog.New(os.Stdout, "music", cfg.LogLevel),
-		Queues:           make(map[string]*Queue),
-		Searches:         make(map[string][]miri.SongResult),
-		maxSearchResults: uint64(cfg.MaxSearchResults),
+		us:       us,
+		Client:   client,
+		Logger:   mylog.New(os.Stdout, "music", us.Config.LogLevel),
+		Queues:   make(map[string]*Queue),
+		Searches: make(map[string][]miri.SongResult),
 	}, nil
 }
 
-func (ms *MusicService) GetVoiceConnection(vc string, s *discordgo.Session, guildID string) (voice *discordgo.VoiceConnection, err error) {
+func (ms *MusicService) GetVoiceConnection(vc string, guildID string) (voice *discordgo.VoiceConnection, err error) {
 	alreadyConnected := false
-	for _, vs := range s.VoiceConnections {
+	for _, vs := range ms.us.Session.VoiceConnections {
 		if vs.GuildID == guildID {
 			voice = vs
 			alreadyConnected = true
@@ -55,7 +51,7 @@ func (ms *MusicService) GetVoiceConnection(vc string, s *discordgo.Session, guil
 		}
 	}
 	if !alreadyConnected {
-		voice, err = s.ChannelVoiceJoin(ms.Ctx, guildID, vc, false, true)
+		voice, err = ms.us.Session.ChannelVoiceJoin(ms.us.Ctx, guildID, vc, false, true)
 		if err != nil {
 			ms.Logger.Errorf("could not join voice channel: %v", err)
 			return nil, err
@@ -71,7 +67,7 @@ func (ms *MusicService) GetOrCreateQueue(vc *discordgo.VoiceConnection, channelI
 			vc:        vc,
 			channelID: channelID,
 			client:    ms.Client,
-			ctx:       ms.Ctx,
+			ctx:       ms.us.Ctx,
 		}
 		ms.Queues[vc.GuildID] = q
 	} else {

@@ -13,7 +13,7 @@ registerSlashCommands efficiently registers all commands in handlersMap as Disco
 It only deletes obsolete commands, creates new ones, and updates changed ones.
 */
 func (bs *BotService) registerSlashCommands() error {
-	existingCommands, err := bs.session.ApplicationCommands(bs.session.State.User.ID, "")
+	existingCommands, err := bs.us.Session.ApplicationCommands(bs.us.Session.State.User.ID, "")
 	if err != nil {
 		return err
 	}
@@ -21,7 +21,7 @@ func (bs *BotService) registerSlashCommands() error {
 	bs.logger.Debug("Slash commands registration started")
 
 	desired := map[string]*discordgo.ApplicationCommand{}
-	if !bs.config.DisableSlashCommands {
+	if !bs.us.Config.DisableSlashCommands {
 		for name, botCommand := range bs.HandlersMap() {
 			options := []*discordgo.ApplicationCommandOption{}
 			for _, opt := range botCommand.SlashOptions {
@@ -56,7 +56,7 @@ func (bs *BotService) registerSlashCommands() error {
 	// Delete obsolete commands
 	for _, cmd := range existingCommands {
 		if _, ok := desired[cmd.Name]; !ok {
-			err := bs.session.ApplicationCommandDelete(bs.session.State.User.ID, "", cmd.ID)
+			err := bs.us.Session.ApplicationCommandDelete(bs.us.Session.State.User.ID, "", cmd.ID)
 			if err != nil {
 				return err
 			}
@@ -74,7 +74,7 @@ func (bs *BotService) registerSlashCommands() error {
 			}
 		}
 		if found == nil {
-			created, err := bs.session.ApplicationCommandCreate(bs.config.ApplicationID, "", desiredCmd)
+			created, err := bs.us.Session.ApplicationCommandCreate(bs.us.Config.ApplicationID, "", desiredCmd)
 			if err != nil {
 				return err
 			}
@@ -92,7 +92,7 @@ func (bs *BotService) registerSlashCommands() error {
 				}
 			}
 			if changed {
-				updated, err := bs.session.ApplicationCommandEdit(bs.config.ApplicationID, "", found.ID, desiredCmd)
+				updated, err := bs.us.Session.ApplicationCommandEdit(bs.us.Config.ApplicationID, "", found.ID, desiredCmd)
 				if err != nil {
 					return err
 				}
@@ -112,7 +112,7 @@ func (bs *BotService) slashHandler(s *discordgo.Session, i *discordgo.Interactio
 		customID := i.MessageComponentData().CustomID
 		splitResult := strings.SplitN(customID, ":", 2)
 		if len(splitResult) != 2 {
-			response := gl.EmbedToResponse(gl.EmbedMessage(gl.MsgUnknownCommand))
+			response := bs.us.EmbedToResponse(bs.us.EmbedMessage(gl.MsgUnknownCommand))
 			s.InteractionRespond(i.Interaction, response)
 			return
 		}
@@ -120,27 +120,27 @@ func (bs *BotService) slashHandler(s *discordgo.Session, i *discordgo.Interactio
 		cmd, arg := splitResult[0], splitResult[1]
 		handler, found := bs.cmdMap[cmd]
 		if !found {
-			response := gl.EmbedToResponse(gl.EmbedMessage(gl.MsgUnknownCommand))
+			response := bs.us.EmbedToResponse(bs.us.EmbedMessage(gl.MsgUnknownCommand))
 			s.InteractionRespond(i.Interaction, response)
 			return
 		}
 
 		response := handler(arg, i)
 		if response != nil {
-			resp := gl.EmbedToResponse(response)
+			resp := bs.us.EmbedToResponse(response)
 			s.InteractionRespond(i.Interaction, resp)
 		}
 		return
 
 	case discordgo.InteractionApplicationCommand:
-		if bs.config.DisableSlashCommands {
+		if bs.us.Config.DisableSlashCommands {
 			return
 		}
 
 		name := i.ApplicationCommandData().Name
 		botCommand, found := bs.HandlersMap()[name]
 		if !found {
-			response := gl.EmbedToResponse(gl.EmbedMessage(gl.MsgUnknownCommand))
+			response := bs.us.EmbedToResponse(bs.us.EmbedMessage(gl.MsgUnknownCommand))
 			s.InteractionRespond(i.Interaction, response)
 			return
 		}
@@ -152,8 +152,8 @@ func (bs *BotService) slashHandler(s *discordgo.Session, i *discordgo.Interactio
 			}
 		}
 
-		m := gl.InteractionToMessageCreate(i, args)
-		response := gl.EmbedToResponse(botCommand.Handler(args, m))
+		m := bs.us.InteractionToMessageCreate(i, args)
+		response := bs.us.EmbedToResponse(botCommand.Handler(args, m))
 		s.InteractionRespond(i.Interaction, response)
 
 	default:

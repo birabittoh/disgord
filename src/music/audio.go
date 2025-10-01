@@ -59,7 +59,6 @@ func NewAudio(track *miri.SongResult, vc *discordgo.VoiceConnection, ms *MusicSe
 	a.downloader(track)
 	go a.reader()
 	go a.encoder()
-
 	go a.play_sound(vc)
 	return
 }
@@ -87,7 +86,7 @@ func (a *Audio) downloader(track *miri.SongResult) {
 
 	// Stream track directly into ffmpeg's Stdin
 	go func() {
-		a.ms.Client.StreamTrackByID(a.ms.Ctx, strconv.Itoa(track.ID), ffmpegStdin)
+		a.ms.Client.StreamTrackByID(a.ms.us.Ctx, strconv.Itoa(track.ID), ffmpegStdin)
 		ffmpegStdin.Close()
 	}()
 }

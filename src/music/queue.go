@@ -32,7 +32,7 @@ func (q *Queue) AddTracks(ms *MusicService, tracks []miri.SongResult) {
 }
 
 func (q *Queue) PlayNext(ms *MusicService, skip bool) (err error) {
-	if q.vc == nil || q.ctx == nil {
+	if q.vc == nil || ms.us.Ctx == nil {
 		return
 	}
 

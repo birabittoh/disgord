@@ -14,7 +14,7 @@ import (
 
 // don't remove the 's' parameter
 func (bs *BotService) messageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
-	if m.Author.ID == bs.session.State.User.ID {
+	if m.Author.ID == bs.us.Session.State.User.ID {
 		return
 	}
 
@@ -29,7 +29,7 @@ func (bs *BotService) messageHandler(s *discordgo.Session, m *discordgo.MessageC
 		return
 	}
 	if response != nil {
-		_, err := bs.session.ChannelMessageSendComplex(m.ChannelID, response)
+		_, err := bs.us.Session.ChannelMessageSendComplex(m.ChannelID, response)
 		if err != nil {
 			bs.logger.Errorf("could not send message: %s", err)
 		}
@@ -69,12 +69,12 @@ func getCommitID() string {
 func Main() (err error) {
 	godotenv.Load()
 
-	gl.Config, err = config.New()
+	cfg, err := config.New()
 	if err != nil {
 		return errors.New("could not load config: " + err.Error())
 	}
 
-	bs, err := NewBotService(gl.Config)
+	bs, err := NewBotService(cfg)
 	if err != nil {
 		return errors.New("could not create bot service: " + err.Error())
 	}

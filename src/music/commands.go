@@ -10,19 +10,23 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
+func getPendingSearchKey(channelID, authorID string) string {
+	return channelID + ":" + authorID
+}
+
 func (ms *MusicService) HandlePlay(args []string, m *discordgo.MessageCreate) *discordgo.MessageSend {
-	r, _, vc := gl.GetVoiceChannelID(ms.session, m.Member, m.GuildID, m.Author.ID)
+	r, _, vc := ms.us.GetVoiceChannelID(m.Member, m.GuildID, m.Author.ID)
 	if r != "" {
-		return gl.EmbedMessage(r)
+		return ms.us.EmbedMessage(r)
 	}
 
 	if len(args) == 0 {
-		return gl.EmbedMessage(gl.MsgNoKeywords)
+		return ms.us.EmbedMessage(gl.MsgNoKeywords)
 	}
 
-	voice, err := ms.GetVoiceConnection(vc, ms.session, m.GuildID)
+	voice, err := ms.GetVoiceConnection(vc, m.GuildID)
 	if err != nil {
-		return gl.EmbedMessage(err.Error())
+		return ms.us.EmbedMessage(err.Error())
 	}
 
 	q := ms.GetOrCreateQueue(voice, vc)
@@ -31,55 +35,55 @@ func (ms *MusicService) HandlePlay(args []string, m *discordgo.MessageCreate) *d
 		Limit: 1,
 		Query: strings.Join(args, " "),
 	}
-	results, err := ms.Client.SearchTracks(ms.Ctx, opt)
+	results, err := ms.Client.SearchTracks(ms.us.Ctx, opt)
 	if err != nil {
 		ms.Logger.Errorf("could not search track: %v", err)
 		if q.nowPlaying == nil {
-			voice.Disconnect(ms.Ctx)
+			voice.Disconnect(ms.us.Ctx)
 		}
-		return gl.EmbedMessage(gl.MsgError)
+		return ms.us.EmbedMessage(gl.MsgError)
 	}
 
 	if len(results) == 0 {
 		if q.nowPlaying == nil {
-			voice.Disconnect(ms.Ctx)
+			voice.Disconnect(ms.us.Ctx)
 		}
-		return gl.EmbedMessage(gl.MsgNoResults)
+		return ms.us.EmbedMessage(gl.MsgNoResults)
 	}
 
 	track := &results[0]
 	q.AddTrack(ms, track)
 
-	return gl.EmbedTrackMessage(track)
+	return ms.us.EmbedTrackMessage(track)
 }
 
 func (ms *MusicService) HandleSearch(args []string, m *discordgo.MessageCreate) *discordgo.MessageSend {
 	q := strings.Join(args, " ")
 	if q == "" {
-		return gl.EmbedMessage(gl.MsgNoKeywords)
+		return ms.us.EmbedMessage(gl.MsgNoKeywords)
 	}
 
 	opt := miri.SearchOptions{
-		Limit: ms.maxSearchResults,
+		Limit: uint64(ms.us.Config.MaxSearchResults),
 		Query: q,
 	}
-	results, err := ms.Client.SearchTracks(ms.Ctx, opt)
+	results, err := ms.Client.SearchTracks(ms.us.Ctx, opt)
 	if err != nil {
 		ms.Logger.Errorf("could not search track: %v", err)
-		return gl.EmbedMessage(gl.MsgError)
+		return ms.us.EmbedMessage(gl.MsgError)
 	}
 
 	if len(results) == 0 {
-		return gl.EmbedMessage(gl.MsgNoResults)
+		return ms.us.EmbedMessage(gl.MsgNoResults)
 	}
 
-	maxResults := min(len(results), int(ms.maxSearchResults))
+	maxResults := min(len(results), int(ms.us.Config.MaxSearchResults))
 	var out string
 	var buttons []discordgo.MessageComponent
 
 	for i := range maxResults {
 		v := results[i]
-		out += fmt.Sprintf(gl.MsgOrderedList, i+1, gl.FormatTrackLine(&v))
+		out += fmt.Sprintf(gl.MsgOrderedList, i+1, ms.us.FormatTrackLine(&v))
 
 		buttons = append(buttons, discordgo.Button{
 			Label:    fmt.Sprintf("%d", i+1),
@@ -95,7 +99,7 @@ func (ms *MusicService) HandleSearch(args []string, m *discordgo.MessageCreate) 
 		CustomID: "choose_track:0",
 	})
 
-	key := gl.GetPendingSearchKey(m.ChannelID, m.Author.ID)
+	key := getPendingSearchKey(m.ChannelID, m.Author.ID)
 	ms.Searches[key] = results[:maxResults]
 
 	// Split buttons into rows of max 5
@@ -108,7 +112,7 @@ func (ms *MusicService) HandleSearch(args []string, m *discordgo.MessageCreate) 
 		components = append(components, row)
 	}
 
-	msg := gl.EmbedMessage(out)
+	msg := ms.us.EmbedMessage(out)
 	msg.Components = components
 	return msg
 }
@@ -116,13 +120,13 @@ func (ms *MusicService) HandleSearch(args []string, m *discordgo.MessageCreate) 
 func (ms *MusicService) HandleLyrics(args []string, m *discordgo.MessageCreate) *discordgo.MessageSend {
 	q := ms.GetQueue(m.GuildID)
 	if q == nil || q.nowPlaying == nil {
-		return gl.EmbedMessage(gl.MsgNothingIsPlaying)
+		return ms.us.EmbedMessage(gl.MsgNothingIsPlaying)
 	}
 
 	lyrics, err := q.nowPlaying.Lyrics()
 	if err != nil || lyrics == "" {
 		ms.Logger.Errorf("could not fetch lyrics: %v", err)
-		return gl.EmbedMessage(gl.MsgNoLyrics)
+		return ms.us.EmbedMessage(gl.MsgNoLyrics)
 	}
 
 	if len(lyrics) > gl.DiscordEmbedDescriptionLimit { // quick bytes check
@@ -132,122 +136,122 @@ func (ms *MusicService) HandleLyrics(args []string, m *discordgo.MessageCreate) 
 		}
 	}
 
-	response := gl.EmbedTrackMessage(q.nowPlaying)
+	response := ms.us.EmbedTrackMessage(q.nowPlaying)
 	response.Embeds[0].Description = lyrics
 
 	return response
 }
 
 func (ms *MusicService) HandleSkip(args []string, m *discordgo.MessageCreate) *discordgo.MessageSend {
-	r, g, vc := gl.GetVoiceChannelID(ms.session, m.Member, m.GuildID, m.Author.ID)
+	r, g, vc := ms.us.GetVoiceChannelID(m.Member, m.GuildID, m.Author.ID)
 	if r != "" {
-		return gl.EmbedMessage(r)
+		return ms.us.EmbedMessage(r)
 	}
 
 	q := ms.GetQueue(g.ID)
 	if q == nil {
-		return gl.EmbedMessage(gl.MsgNothingIsPlaying)
+		return ms.us.EmbedMessage(gl.MsgNothingIsPlaying)
 	}
 
 	if vc != q.VoiceChannelID() {
-		return gl.EmbedMessage(gl.MsgSameVoiceChannel)
+		return ms.us.EmbedMessage(gl.MsgSameVoiceChannel)
 	}
 
 	err := q.PlayNext(ms, true)
 	if err != nil {
-		return gl.EmbedMessage(gl.MsgNothingIsPlaying)
+		return ms.us.EmbedMessage(gl.MsgNothingIsPlaying)
 	}
 
-	return gl.EmbedMessage(gl.MsgSkipped)
+	return ms.us.EmbedMessage(gl.MsgSkipped)
 }
 
 func (ms *MusicService) HandleQueue(args []string, m *discordgo.MessageCreate) *discordgo.MessageSend {
 	q := ms.GetQueue(m.GuildID)
 	if q == nil {
-		return gl.EmbedMessage(gl.MsgNothingIsPlaying)
+		return ms.us.EmbedMessage(gl.MsgNothingIsPlaying)
 	}
 
 	var out string
 	tracks := q.Tracks()
 	for i, v := range tracks {
-		out += fmt.Sprintf(gl.MsgOrderedList, i, gl.FormatTrackLine(&v))
+		out += fmt.Sprintf(gl.MsgOrderedList, i, ms.us.FormatTrackLine(&v))
 	}
-	return gl.EmbedMessage(out)
+	return ms.us.EmbedMessage(out)
 }
 
 func (ms *MusicService) HandleClear(args []string, m *discordgo.MessageCreate) *discordgo.MessageSend {
-	r, g, vc := gl.GetVoiceChannelID(ms.session, m.Member, m.GuildID, m.Author.ID)
+	r, g, vc := ms.us.GetVoiceChannelID(m.Member, m.GuildID, m.Author.ID)
 	if r != "" {
-		return gl.EmbedMessage(r)
+		return ms.us.EmbedMessage(r)
 	}
 
 	q := ms.GetQueue(g.ID)
 	if q == nil {
-		return gl.EmbedMessage(gl.MsgNothingIsPlaying)
+		return ms.us.EmbedMessage(gl.MsgNothingIsPlaying)
 	}
 
 	if vc != q.VoiceChannelID() {
-		return gl.EmbedMessage(gl.MsgSameVoiceChannel)
+		return ms.us.EmbedMessage(gl.MsgSameVoiceChannel)
 	}
 
 	q.Clear()
 
-	return gl.EmbedMessage(gl.MsgCleared)
+	return ms.us.EmbedMessage(gl.MsgCleared)
 }
 
 func (ms *MusicService) HandleLeave(args []string, m *discordgo.MessageCreate) *discordgo.MessageSend {
-	r, g, vc := gl.GetVoiceChannelID(ms.session, m.Member, m.GuildID, m.Author.ID)
+	r, g, vc := ms.us.GetVoiceChannelID(m.Member, m.GuildID, m.Author.ID)
 	if r != "" {
-		return gl.EmbedMessage(r)
+		return ms.us.EmbedMessage(r)
 	}
 
 	q := ms.GetQueue(g.ID)
 	if q == nil {
-		return gl.EmbedMessage(gl.MsgNothingIsPlaying)
+		return ms.us.EmbedMessage(gl.MsgNothingIsPlaying)
 	}
 
 	if vc != q.VoiceChannelID() {
-		return gl.EmbedMessage(gl.MsgSameVoiceChannel)
+		return ms.us.EmbedMessage(gl.MsgSameVoiceChannel)
 	}
 
 	ms.DeleteQueue(g.ID)
-	return gl.EmbedMessage(gl.MsgLeft)
+	return ms.us.EmbedMessage(gl.MsgLeft)
 }
 
 func (ms *MusicService) HandleChooseTrack(arg string, i *discordgo.InteractionCreate) *discordgo.MessageSend {
 	trackIdx, err := strconv.Atoi(arg)
 	if err != nil || trackIdx < 0 {
-		return gl.EmbedMessage(gl.MsgInvalidTrackNumber)
+		return ms.us.EmbedMessage(gl.MsgInvalidTrackNumber)
 	}
 
-	key := gl.GetPendingSearchKey(i.ChannelID, i.Member.User.ID)
+	key := getPendingSearchKey(i.ChannelID, i.Member.User.ID)
 	results, found := ms.Searches[key]
 	if !found || trackIdx > len(results) {
-		return gl.EmbedMessage(gl.MsgCantFindSearch)
+		return ms.us.EmbedMessage(gl.MsgCantFindSearch)
 	}
 
 	if trackIdx == 0 {
 		// Cancel selection silently
 		delete(ms.Searches, key)
-		ms.session.ChannelMessageDelete(i.ChannelID, i.Message.ID)
+		ms.us.Session.ChannelMessageDelete(i.ChannelID, i.Message.ID)
 		return nil
 	}
 
 	track := &results[trackIdx-1]
-	r, _, vc := gl.GetVoiceChannelID(ms.session, i.Member, i.GuildID, i.Member.User.ID)
+	r, _, vc := ms.us.GetVoiceChannelID(i.Member, i.GuildID, i.Member.User.ID)
 	if r != "" {
-		return gl.EmbedMessage(r)
+		return ms.us.EmbedMessage(r)
 	}
 
-	voice, err := ms.GetVoiceConnection(vc, ms.session, i.GuildID)
+	voice, err := ms.GetVoiceConnection(vc, i.GuildID)
 	if err != nil {
-		return gl.EmbedMessage(err.Error())
+		return ms.us.EmbedMessage(err.Error())
 	}
 
 	q := ms.GetOrCreateQueue(voice, vc)
 	q.AddTrack(ms, track)
 	delete(ms.Searches, key)
-	defer ms.session.ChannelMessageDelete(i.ChannelID, i.Message.ID)
+	defer ms.us.Session.ChannelMessageDelete(i.ChannelID, i.Message.ID)
 
-	return gl.EmbedTrackMessage(track)
+	return ms.us.EmbedTrackMessage(track)
 }

@@ -21,7 +21,7 @@ type Config struct {
 	DisablePrefixCommands bool
 
 	AlbumCoverSize   string
-	MaxSearchResults uint
+	MaxSearchResults uint64
 
 	MagazineSize    uint
 	BustProbability uint
@@ -86,7 +86,7 @@ func New() (*Config, error) {
 
 		// Music settings
 		AlbumCoverSize:   getEnv("ALBUM_COVER_SIZE", "xl"),
-		MaxSearchResults: getEnvUint("MAX_SEARCH_RESULTS", 9),
+		MaxSearchResults: uint64(getEnvUint("MAX_SEARCH_RESULTS", 9)),
 
 		// Shoot settings
 		MagazineSize:    getEnvUint("MAGAZINE_SIZE", 3),

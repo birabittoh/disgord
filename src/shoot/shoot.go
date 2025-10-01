@@ -6,18 +6,16 @@ import (
 	"os"
 	"time"
 
-	"github.com/birabittoh/disgord/src/config"
 	gl "github.com/birabittoh/disgord/src/globals"
 	"github.com/birabittoh/disgord/src/mylog"
 	"github.com/bwmarrin/discordgo"
 )
 
 type ShootService struct {
-	session         *discordgo.Session
-	logger          *mylog.Logger
-	magazines       map[string]*Magazine
-	bustProbability uint // percentage
-	magazineSize    uint
+	us *gl.UtilsService
+
+	logger    *mylog.Logger
+	magazines map[string]*Magazine
 }
 
 type Magazine struct {
@@ -26,19 +24,18 @@ type Magazine struct {
 	last time.Time
 }
 
-func NewShootService(session *discordgo.Session, cfg *config.Config) *ShootService {
-	if cfg.BustProbability == 0 {
-		cfg.BustProbability = 50
+func NewShootService(us *gl.UtilsService) *ShootService {
+	if us.Config.BustProbability == 0 {
+		us.Config.BustProbability = 50
 	}
-	if cfg.BustProbability > 100 {
-		cfg.BustProbability = 100
+	if us.Config.BustProbability > 100 {
+		us.Config.BustProbability = 100
 	}
 
 	return &ShootService{
-		session:         session,
-		logger:          mylog.New(os.Stdin, "shoot", cfg.LogLevel),
-		magazines:       make(map[string]*Magazine),
-		bustProbability: cfg.BustProbability,
+		us:        us,
+		logger:    mylog.New(os.Stdin, "shoot", us.Config.LogLevel),
+		magazines: make(map[string]*Magazine),
 	}
 }
 
@@ -76,21 +73,21 @@ func (m *Magazine) String() string {
 	return fmt.Sprintf(gl.MsgMagazineFmt, m.Left(), m.Size())
 }
 
-func (s *ShootService) GetMagazine(userID string) (q *Magazine) {
-	q, ok := s.magazines[userID]
+func (ss *ShootService) GetMagazine(userID string) (q *Magazine) {
+	q, ok := ss.magazines[userID]
 	if ok {
 		return
 	}
 
-	q = NewMagazine(s.magazineSize)
-	s.magazines[userID] = q
+	q = NewMagazine(ss.us.Config.MagazineSize)
+	ss.magazines[userID] = q
 	return
 }
 
 func (ss *ShootService) HandleShoot(args []string, m *discordgo.MessageCreate) *discordgo.MessageSend {
-	response, guild, voiceChannelID := gl.GetVoiceChannelID(ss.session, m.Member, m.GuildID, m.Author.ID)
+	response, guild, voiceChannelID := ss.us.GetVoiceChannelID(m.Member, m.GuildID, m.Author.ID)
 	if voiceChannelID == "" {
-		return gl.EmbedMessage(response)
+		return ss.us.EmbedMessage(response)
 	}
 
 	killerID := m.Author.ID
@@ -98,7 +95,7 @@ func (ss *ShootService) HandleShoot(args []string, m *discordgo.MessageCreate) *
 	var err error
 	for _, vs := range guild.VoiceStates {
 		if vs.ChannelID == voiceChannelID && vs.UserID != killerID {
-			vs.Member, err = ss.session.State.Member(guild.ID, vs.UserID)
+			vs.Member, err = ss.us.Session.State.Member(guild.ID, vs.UserID)
 			if err != nil {
 				ss.logger.Errorf("could not get member info: %s", err)
 				continue
@@ -110,24 +107,24 @@ func (ss *ShootService) HandleShoot(args []string, m *discordgo.MessageCreate) *
 	}
 
 	if len(allMembers) == 0 {
-		return gl.EmbedMessage(fmt.Sprintf(gl.MsgNoOtherUsersFmt, voiceChannelID))
+		return ss.us.EmbedMessage(fmt.Sprintf(gl.MsgNoOtherUsersFmt, voiceChannelID))
 	}
 
 	magazine := ss.GetMagazine(killerID)
 	if !magazine.Shoot() {
-		return gl.EmbedMessage(gl.MsgOutOfBullets)
+		return ss.us.EmbedMessage(gl.MsgOutOfBullets)
 	}
 
 	victimID := killerID
-	if rand.UintN(100) < ss.bustProbability {
+	if rand.UintN(100) < ss.us.Config.BustProbability {
 		victimID = allMembers[rand.IntN(len(allMembers))]
 	}
 
-	err = ss.session.GuildMemberMove(m.GuildID, victimID, nil)
+	err = ss.us.Session.GuildMemberMove(m.GuildID, victimID, nil)
 	if err != nil {
 		ss.logger.Errorf("could not kick user: %s", err)
-		return gl.EmbedMessage(gl.MsgCantKickUser)
+		return ss.us.EmbedMessage(gl.MsgCantKickUser)
 	}
 
-	return gl.EmbedMessage(fmt.Sprintf(gl.MsgShootFmt, victimID, magazine.String()))
+	return ss.us.EmbedMessage(fmt.Sprintf(gl.MsgShootFmt, victimID, magazine.String()))
 }
