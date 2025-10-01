@@ -185,10 +185,15 @@ func AddSlashHandler(session *discordgo.Session, musicService *music.MusicServic
 			Message: &discordgo.Message{
 				GuildID:   i.GuildID,
 				ChannelID: i.ChannelID,
-				Author:    i.Member.User,
-				Member:    i.Member,
 			},
 		}
+		if i.Member != nil {
+			m.Author = i.Member.User
+			m.Member = i.Member
+		} else if i.User != nil {
+			m.Author = i.User
+		}
+
 		if len(args) > 0 {
 			m.Content = args[0]
 		}

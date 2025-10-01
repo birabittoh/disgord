@@ -11,6 +11,8 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
+const bustProbability = 50
+
 type ShootService struct {
 	logger    *mylog.Logger
 	magazines map[string]*Magazine
@@ -75,7 +77,9 @@ func (s *ShootService) GetMagazine(userID string) (q *Magazine) {
 }
 
 func (ss *ShootService) HandleShoot(args []string, s *discordgo.Session, m *discordgo.MessageCreate) *discordgo.MessageSend {
-	const bustProbability = 50
+	if m.GuildID == "" {
+		return gl.EmbedMessage(gl.MsgUseInServer)
+	}
 
 	_, err := s.Guild(m.GuildID)
 	if err != nil {

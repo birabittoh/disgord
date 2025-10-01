@@ -11,7 +11,7 @@ import (
 
 func GetVoiceChannelID(s *discordgo.Session, member *discordgo.Member, guildID, authorID string) (response string, g *discordgo.Guild, voiceChannelID string) {
 	if member == nil {
-		response = "Please, use this inside a server."
+		response = MsgUseInServer
 		return
 	}
 
@@ -30,7 +30,7 @@ func GetVoiceChannelID(s *discordgo.Session, member *discordgo.Member, guildID, 
 	}
 
 	if voiceChannelID == "" {
-		response = "You need to be in a voice channel to use this command."
+		response = MsgNoVoiceChannel
 	}
 	return
 }
