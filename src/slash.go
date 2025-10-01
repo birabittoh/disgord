@@ -2,6 +2,7 @@
 package src
 
 import (
+	"os"
 	"strconv"
 	"strings"
 
@@ -12,7 +13,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-var logger = mylog.NewLogger(nil, "main", gl.LogLevel)
+var logger = mylog.NewLogger(os.Stdout, "main", gl.LogLevel)
 
 /*
 RegisterSlashCommands efficiently registers all commands in handlersMap as Discord slash commands.
@@ -34,10 +35,23 @@ func RegisterSlashCommands(session *discordgo.Session) error {
 				Required:    opt.Required,
 			})
 		}
-		desired[name] = &discordgo.ApplicationCommand{
+
+		cmd := &discordgo.ApplicationCommand{
 			Name:        name,
 			Description: botCommand.Help,
 			Options:     options,
+		}
+
+		desired[name] = cmd
+
+		// Register alias as a separate command if present and non-empty
+		if botCommand.Alias != "" {
+			aliasCmd := &discordgo.ApplicationCommand{
+				Name:        botCommand.Alias,
+				Description: botCommand.Help,
+				Options:     options,
+			}
+			desired[botCommand.Alias] = aliasCmd
 		}
 	}
 
@@ -140,8 +154,7 @@ func AddSlashHandler(session *discordgo.Session, musicService *music.MusicServic
 				delete(musicService.Searches, key)
 				defer s.ChannelMessageDelete(i.ChannelID, i.Message.ID)
 
-				coverURL := track.CoverURL(gl.AlbumCoverSize)
-				response := gl.EmbedToResponse(gl.EmbedTrackMessage(gl.FormatTrack(track), coverURL))
+				response := gl.EmbedToResponse(gl.EmbedTrackMessage(track))
 				err = s.InteractionRespond(i.Interaction, response)
 				if err != nil {
 					logger.Errorf("could not respond to interaction: %s", err)

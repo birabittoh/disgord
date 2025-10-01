@@ -49,8 +49,7 @@ func (ms *MusicService) HandlePlay(args []string, s *discordgo.Session, m *disco
 	track := &results[0]
 	q.AddTrack(ms, track)
 
-	coverURL := track.CoverURL(gl.AlbumCoverSize)
-	return gl.EmbedTrackMessage(gl.FormatTrack(track), coverURL)
+	return gl.EmbedTrackMessage(track)
 }
 
 func (ms *MusicService) HandleSearch(args []string, s *discordgo.Session, m *discordgo.MessageCreate) *discordgo.MessageSend {
@@ -113,6 +112,31 @@ func (ms *MusicService) HandleSearch(args []string, s *discordgo.Session, m *dis
 	msg := gl.EmbedMessage(out)
 	msg.Components = components
 	return msg
+}
+
+func (ms *MusicService) HandleLyrics(args []string, s *discordgo.Session, m *discordgo.MessageCreate) *discordgo.MessageSend {
+	q := ms.GetQueue(m.GuildID)
+	if q == nil || q.nowPlaying == nil {
+		return gl.EmbedMessage(gl.MsgNothingIsPlaying)
+	}
+
+	lyrics, err := q.nowPlaying.Lyrics()
+	if err != nil || lyrics == "" {
+		ms.Logger.Errorf("could not fetch lyrics: %v", err)
+		return gl.EmbedMessage(gl.MsgNoLyrics)
+	}
+
+	if len(lyrics) > gl.DiscordEmbedDescriptionLimit { // quick bytes check
+		runes := []rune(lyrics)
+		if len(runes) > gl.DiscordEmbedDescriptionLimit { // accurate rune check
+			lyrics = string(runes[:gl.DiscordEmbedDescriptionLimit-1]) + "…"
+		}
+	}
+
+	response := gl.EmbedTrackMessage(q.nowPlaying)
+	response.Embeds[0].Description = lyrics
+
+	return response
 }
 
 func (ms *MusicService) HandleSkip(args []string, s *discordgo.Session, m *discordgo.MessageCreate) *discordgo.MessageSend {

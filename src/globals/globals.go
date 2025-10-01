@@ -14,7 +14,9 @@ const (
 	MsgNoKeywords       = "Please, provide some keywords."
 	MsgNothingIsPlaying = "Nothing is playing."
 	MsgSameVoiceChannel = "You need to be in the same voice channel to use this command."
+	MsgNoLyrics         = "No lyrics found for this song."
 	MsgOrderedList      = "%d. %s\n"
+	MsgUnorderedList    = "* %s\n"
 	MsgSearchHelp       = "\nTo pick a song, just type the number of your selection or 0 to cancel.\n"
 	MsgChoiceOutOfRange = "Choice out of range. Please pick a number between 1 and %d."
 	MsgCanceled         = "Canceled."
@@ -28,13 +30,13 @@ const (
 	MsgPrefixTooLong    = "Prefix is too long."
 	MsgUsagePrefix      = "Usage: %s <new prefix>."
 	MsgHelp             = "**Bot commands:**\n"
-	MsgHelpCommandFmt   = "* %s\n"
 
-	MsgHelpFmt       = "%s - _%s_"
-	defaultPrefix    = "$"
-	defaultColor     = 0xFF73A8
-	AlbumCoverSize   = "xl" // "small", "medium", "big", "xl"
-	MaxSearchResults = 9
+	MsgHelpFmt                   = "%s - _%s_"
+	defaultPrefix                = "$"
+	defaultColor                 = 0xFF73A8
+	AlbumCoverSize               = "xl" // "small", "medium", "big", "xl"
+	MaxSearchResults             = 9
+	DiscordEmbedDescriptionLimit = 4096
 
 	LogLevel = mylog.DEBUG
 )
@@ -73,6 +75,7 @@ type SlashOption struct {
 type BotCommand struct {
 	Handler      func([]string, *discordgo.Session, *discordgo.MessageCreate) *discordgo.MessageSend
 	ShortCode    string
+	Alias        string
 	Help         string
 	SlashOptions []SlashOption // Slash command options
 	SlashOnly    bool          // If true, only available as slash command

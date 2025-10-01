@@ -40,6 +40,9 @@ func (bc BotCommand) FormatHelp(command, guildID string) string {
 	if bc.ShortCode != "" {
 		shortCodeStr = fmt.Sprintf(" (%s)", FormatCommand(bc.ShortCode, guildID))
 	}
+	if bc.Alias != "" {
+		shortCodeStr += fmt.Sprintf(" (%s)", FormatCommand(bc.Alias, guildID))
+	}
 	return fmt.Sprintf(MsgHelpFmt, FormatCommand(command, guildID)+shortCodeStr, bc.Help)
 }
 
@@ -49,12 +52,7 @@ func FormatCommand(command, guildID string) string {
 
 func FormatTrackLine(v *miri.SongResult) string {
 	duration := time.Duration(v.Duration) * time.Second
-	return fmt.Sprintf("_%s_ - **%s** (`%s`)", v.Artist.Name, v.Title, duration.String())
-}
-
-func FormatTrack(v *miri.SongResult) string {
-	duration := time.Duration(v.Duration) * time.Second
-	return fmt.Sprintf("**%s** (`%s`)\n_%s_\n\n%s", v.Title, duration.String(), v.Artist.Name, v.Album.Title)
+	return fmt.Sprintf("%s - **%s** (`%s`)", v.Artist.Name, v.Title, duration.String())
 }
 
 func ParseUserMessage(messageContent, guildID string) (command string, args []string, ok bool) {
@@ -121,9 +119,10 @@ func EmbedMessage(content string) *discordgo.MessageSend {
 }
 
 // EmbedTrackMessage returns a MessageSend with an embed and a cover image.
-func EmbedTrackMessage(content, coverURL string) *discordgo.MessageSend {
-	response := EmbedMessage(content)
-	response.Embeds[0].Thumbnail = &discordgo.MessageEmbedThumbnail{URL: coverURL}
+func EmbedTrackMessage(track *miri.SongResult) *discordgo.MessageSend {
+	response := EmbedMessage(fmt.Sprintf("%s\n\n_%s_", track.Artist.Name, track.Album.Title))
+	response.Embeds[0].Title = track.Title
+	response.Embeds[0].Thumbnail = &discordgo.MessageEmbedThumbnail{URL: track.CoverURL(AlbumCoverSize)}
 	return response
 }
 
