@@ -2,6 +2,7 @@
 package src
 
 import (
+	"fmt"
 	"strings"
 
 	gl "github.com/birabittoh/disgord/src/globals"
@@ -22,7 +23,7 @@ func (bs *BotService) registerSlashCommands() error {
 
 	desired := map[string]*discordgo.ApplicationCommand{}
 	if !bs.us.Config.DisableSlashCommands {
-		for name, botCommand := range bs.HandlersMap() {
+		for name, botCommand := range bs.handlersMap {
 			options := []*discordgo.ApplicationCommandOption{}
 			for _, opt := range botCommand.SlashOptions {
 				options = append(options, &discordgo.ApplicationCommandOption{
@@ -138,9 +139,9 @@ func (bs *BotService) slashHandler(s *discordgo.Session, i *discordgo.Interactio
 		}
 
 		name := i.ApplicationCommandData().Name
-		botCommand, found := bs.HandlersMap()[name]
-		if !found {
-			response := bs.us.EmbedToResponse(bs.us.EmbedMessage(gl.MsgUnknownCommand))
+		bc := bs.getCommand(name)
+		if bc == nil {
+			response := bs.us.EmbedToResponse(bs.us.EmbedMessage(fmt.Sprintf(gl.MsgUnknownCommand, name)))
 			s.InteractionRespond(i.Interaction, response)
 			return
 		}
@@ -153,7 +154,7 @@ func (bs *BotService) slashHandler(s *discordgo.Session, i *discordgo.Interactio
 		}
 
 		m := bs.us.InteractionToMessageCreate(i, args)
-		response := bs.us.EmbedToResponse(botCommand.Handler(args, m))
+		response := bs.us.EmbedToResponse(bc.Handler(args, m))
 		s.InteractionRespond(i.Interaction, response)
 
 	default:

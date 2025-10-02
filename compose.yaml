@@ -6,6 +6,8 @@ services:
     image: ghcr.io/birabittoh/disgord:main
     container_name: 'disgord'
     restart: unless-stopped
+    ports:
+      - '8080:8080'
     env_file:
       - .env
     volumes:

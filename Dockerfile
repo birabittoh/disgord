@@ -36,5 +36,7 @@ RUN apk add --no-cache ffmpeg
 
 WORKDIR /app
 
+COPY templates ./templates
 COPY --from=builder /dist .
+
 ENTRYPOINT ["./disgord"]

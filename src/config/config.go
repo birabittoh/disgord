@@ -19,6 +19,7 @@ type Config struct {
 	Color                 int
 	DisableSlashCommands  bool
 	DisablePrefixCommands bool
+	UIAddress             string
 
 	AlbumCoverSize   string
 	MaxSearchResults uint64
@@ -81,6 +82,7 @@ func New() (*Config, error) {
 		LogLevel:              mylog.INFO,
 		Prefix:                getEnv("PREFIX", "$"),
 		Color:                 int(color),
+		UIAddress:             getEnv("UI_ADDRESS", ":8080"),
 		DisableSlashCommands:  getEnvBool("DISABLE_SLASH_COMMANDS", false),
 		DisablePrefixCommands: getEnvBool("DISABLE_PREFIX_COMMANDS", false),
 
@@ -112,6 +114,10 @@ func (c *Config) Validate() error {
 
 	if c.Color < 0 || c.Color > 0xFFFFFF {
 		return errors.New("color must be a valid hex color code")
+	}
+
+	if c.UIAddress == "" {
+		return errors.New("UI address must be set")
 	}
 
 	if c.DisableSlashCommands && c.DisablePrefixCommands {

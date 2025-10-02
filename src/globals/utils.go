@@ -134,3 +134,7 @@ func (us *UtilsService) InteractionToMessageCreate(i *discordgo.InteractionCreat
 
 	return m
 }
+
+func (us *UtilsService) GetInviteLink() string {
+	return fmt.Sprintf("https://discord.com/api/oauth2/authorize?client_id=%s&permissions=%d&scope=bot", us.Config.ApplicationID, DiscordPermissions)
+}

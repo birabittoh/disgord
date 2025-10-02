@@ -43,6 +43,7 @@ const (
 	DiscordEmbedDescriptionLimit   = 4096
 	DefaultSearchOptionName        = "input"
 	DefaultSearchOptionDescription = "command arguments"
+	DiscordPermissions             = 17825792
 )
 
 var CommitID string
@@ -59,5 +60,5 @@ type BotCommand struct {
 	ShortCode    string
 	Alias        string
 	Help         string
-	SlashOptions []SlashOption // Slash command options
+	SlashOptions []SlashOption
 }

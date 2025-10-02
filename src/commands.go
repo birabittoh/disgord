@@ -12,6 +12,7 @@ import (
 	"github.com/birabittoh/disgord/src/music"
 	"github.com/birabittoh/disgord/src/mylog"
 	"github.com/birabittoh/disgord/src/shoot"
+	"github.com/birabittoh/disgord/src/ui"
 	"github.com/bwmarrin/discordgo"
 )
 
@@ -19,6 +20,7 @@ type BotService struct {
 	us *gl.UtilsService
 	ms *music.MusicService
 	ss *shoot.ShootService
+	ui *ui.UIService
 
 	logger       *mylog.Logger
 	cmdMap       map[string]func(arg string, i *discordgo.InteractionCreate) *discordgo.MessageSend
@@ -44,6 +46,7 @@ func NewBotService(cfg *config.Config) (bs *BotService, err error) {
 	if err != nil {
 		return nil, errors.New("could not initialize music service: " + err.Error())
 	}
+	bs.ui = ui.NewUIService(bs.us, bs.ms)
 
 	bs.initHandlers()
 	bs.us.Session.AddHandler(bs.messageHandler)
@@ -66,6 +69,9 @@ func (bs *BotService) Start() error {
 			bs.logger.Errorf("could not register slash commands: %s", err)
 		}
 	}()
+
+	go bs.ui.Start()
+
 	return nil
 }
 
@@ -73,10 +79,6 @@ func (bs *BotService) Stop() {
 	if err := bs.us.Session.Close(); err != nil {
 		bs.logger.Errorf("could not close session: %s", err)
 	}
-}
-
-func (bs *BotService) HandlersMap() map[string]gl.BotCommand {
-	return bs.handlersMap
 }
 
 func (bs *BotService) initHandlers() {
@@ -124,6 +126,18 @@ func (bs *BotService) initHandlers() {
 	}
 }
 
+func (bs *BotService) getCommand(name string) *gl.BotCommand {
+	if aliasTo, isAlias := bs.aliasMap[name]; isAlias {
+		name = aliasTo
+	}
+
+	botCommand, found := bs.handlersMap[name]
+	if !found {
+		return nil
+	}
+	return &botCommand
+}
+
 func (bs *BotService) handleCommand(m *discordgo.MessageCreate) (response *discordgo.MessageSend, ok bool, err error) {
 	if bs.us.Config.DisablePrefixCommands {
 		return nil, false, nil
@@ -134,17 +148,13 @@ func (bs *BotService) handleCommand(m *discordgo.MessageCreate) (response *disco
 		return
 	}
 
-	if aliasTo, isAlias := bs.aliasMap[command]; isAlias {
-		command = aliasTo
-	}
-
-	botCommand, found := bs.handlersMap[command]
-	if !found {
+	bc := bs.getCommand(command)
+	if bc == nil {
 		response = bs.us.EmbedMessage(fmt.Sprintf(gl.MsgUnknownCommand, bs.us.FormatCommand(command)))
 		return
 	}
 
-	response = botCommand.Handler(args, m)
+	response = bc.Handler(args, m)
 	return
 }
 

@@ -14,6 +14,41 @@ func getPendingSearchKey(channelID, authorID string) string {
 	return channelID + ":" + authorID
 }
 
+func (ms *MusicService) PlayToVC(query string, vc string, guildID string) (response string, track *miri.SongResult, err error) {
+	voice, err := ms.GetVoiceConnection(vc, guildID)
+	if err != nil {
+		return
+	}
+
+	q := ms.GetOrCreateQueue(voice, vc)
+
+	opt := miri.SearchOptions{
+		Limit: 1,
+		Query: query,
+	}
+	results, err := ms.Client.SearchTracks(ms.us.Ctx, opt)
+	if err != nil {
+		ms.Logger.Errorf("could not search track: %v", err)
+		if q.nowPlaying == nil {
+			voice.Disconnect(ms.us.Ctx)
+		}
+		response = gl.MsgError
+		return
+	}
+
+	if len(results) == 0 {
+		if q.nowPlaying == nil {
+			voice.Disconnect(ms.us.Ctx)
+		}
+		response = gl.MsgNoResults
+		return
+	}
+
+	track = &results[0]
+	q.AddTrack(ms, track)
+	return
+}
+
 func (ms *MusicService) HandlePlay(args []string, m *discordgo.MessageCreate) *discordgo.MessageSend {
 	r, _, vc := ms.us.GetVoiceChannelID(m.Member, m.GuildID, m.Author.ID)
 	if r != "" {
@@ -24,37 +59,17 @@ func (ms *MusicService) HandlePlay(args []string, m *discordgo.MessageCreate) *d
 		return ms.us.EmbedMessage(gl.MsgNoKeywords)
 	}
 
-	voice, err := ms.GetVoiceConnection(vc, m.GuildID)
+	query := strings.Join(args, " ")
+	response, track, err := ms.PlayToVC(query, vc, m.GuildID)
 	if err != nil {
-		return ms.us.EmbedMessage(err.Error())
-	}
-
-	q := ms.GetOrCreateQueue(voice, vc)
-
-	opt := miri.SearchOptions{
-		Limit: 1,
-		Query: strings.Join(args, " "),
-	}
-	results, err := ms.Client.SearchTracks(ms.us.Ctx, opt)
-	if err != nil {
-		ms.Logger.Errorf("could not search track: %v", err)
-		if q.nowPlaying == nil {
-			voice.Disconnect(ms.us.Ctx)
-		}
 		return ms.us.EmbedMessage(gl.MsgError)
 	}
 
-	if len(results) == 0 {
-		if q.nowPlaying == nil {
-			voice.Disconnect(ms.us.Ctx)
-		}
-		return ms.us.EmbedMessage(gl.MsgNoResults)
+	if track != nil {
+		return ms.us.EmbedTrackMessage(track)
 	}
 
-	track := &results[0]
-	q.AddTrack(ms, track)
-
-	return ms.us.EmbedTrackMessage(track)
+	return ms.us.EmbedMessage(response)
 }
 
 func (ms *MusicService) HandleSearch(args []string, m *discordgo.MessageCreate) *discordgo.MessageSend {
