@@ -332,6 +332,7 @@
             display: flex;
             gap: 8px;
             flex-wrap: wrap;
+            justify-content: space-evenly;
         }
 
         button {
@@ -776,11 +777,6 @@ function renderQueue(guildId, queue, selectedChannel) {
                 <div style="text-align: center; padding: 20px; color: var(--text-secondary);">
                     <p>No active queue</p>
                     ${selectedChannel ? '<p style="font-size: 0.85rem; margin-top: 8px;">Add a new track below</p>' : ''}
-                </div>
-                <div class="controls">
-                    <button class="btn-secondary" onclick="handleSkip('${guildId}')" disabled>⏭️ Skip</button>
-                    <button class="btn-secondary" onclick="handleClear('${guildId}')" disabled>🗑️ Clear</button>
-                    <button class="btn-danger" onclick="handleStop('${guildId}')" disabled>⏹️ Stop</button>
                 </div>
                 ${renderPlayForm(guildId, selectedChannel)}
             `;
