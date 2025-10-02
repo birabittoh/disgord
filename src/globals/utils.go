@@ -70,7 +70,7 @@ func (us *UtilsService) FormatTrackLine(v *miri.SongResult) string {
 	return fmt.Sprintf("%s - **%s** (`%s`)", v.Artist.Name, v.Title, duration.String())
 }
 
-func (us *UtilsService) ParseUserMessage(messageContent string) (command string, args []string, ok bool) {
+func (us *UtilsService) ParseUserMessage(messageContent string) (command string, args string, ok bool) {
 	after, found := strings.CutPrefix(messageContent, us.Config.Prefix)
 	if !found {
 		return
@@ -78,7 +78,7 @@ func (us *UtilsService) ParseUserMessage(messageContent string) (command string,
 
 	userInput := strings.Split(after, " ")
 	command = strings.ToLower(userInput[0])
-	return command, userInput[1:], len(command) > 0
+	return command, strings.Join(userInput[1:], " "), len(command) > 0
 }
 
 // EmbedMessage returns a MessageSend with a single embed and fixed color.

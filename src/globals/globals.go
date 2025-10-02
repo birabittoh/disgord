@@ -56,9 +56,15 @@ type SlashOption struct {
 }
 
 type BotCommand struct {
-	Handler      func([]string, *discordgo.MessageCreate) *discordgo.MessageSend
+	Handler      func(string, *discordgo.MessageCreate) *discordgo.MessageSend
 	ShortCode    string
 	Alias        string
 	Help         string
 	SlashOptions []SlashOption
+	Tag          string
+}
+
+type BotInteraction struct {
+	Handler func(string, *discordgo.InteractionCreate) *discordgo.MessageSend
+	Tag     string
 }

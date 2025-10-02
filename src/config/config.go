@@ -9,23 +9,30 @@ import (
 )
 
 type Config struct {
+	// General settings
 	ApplicationID string // required
-	Token         string // required
-	ArlCookie     string // required
-	SecretKey     string // required
+	BotToken      string // required
+	LogLevel      mylog.Level
+	Prefix        string
+	Color         int
+	UIAddress     string
 
-	LogLevel              mylog.Level
-	Prefix                string
-	Color                 int
-	DisableSlashCommands  bool
-	DisablePrefixCommands bool
-	UIAddress             string
-
+	// Music settings
+	ArlCookie        string // required for music
+	SecretKey        string // requred for music
 	AlbumCoverSize   string
 	MaxSearchResults uint64
 
+	// Shoot settings
 	MagazineSize    uint
 	BustProbability uint
+
+	// Disable settings
+	DisableUI             bool
+	DisableSlashCommands  bool
+	DisablePrefixCommands bool
+	DisableMusic          bool
+	DisableShoot          bool
 }
 
 func requireEnv(key string) string {
@@ -72,27 +79,26 @@ func New() (*Config, error) {
 	}
 
 	c := &Config{
-		// Required fields
 		ApplicationID: requireEnv("APPLICATION_ID"),
-		Token:         requireEnv("BOT_TOKEN"),
-		ArlCookie:     requireEnv("ARL_COOKIE"),
-		SecretKey:     requireEnv("SECRET_KEY"),
+		BotToken:      requireEnv("BOT_TOKEN"),
+		LogLevel:      mylog.INFO,
+		Prefix:        getEnv("PREFIX", "$"),
+		Color:         int(color),
+		UIAddress:     getEnv("UI_ADDRESS", ":8080"),
 
-		// General settings
-		LogLevel:              mylog.INFO,
-		Prefix:                getEnv("PREFIX", "$"),
-		Color:                 int(color),
-		UIAddress:             getEnv("UI_ADDRESS", ":8080"),
-		DisableSlashCommands:  getEnvBool("DISABLE_SLASH_COMMANDS", false),
-		DisablePrefixCommands: getEnvBool("DISABLE_PREFIX_COMMANDS", false),
-
-		// Music settings
+		ArlCookie:        getEnv("ARL_COOKIE", ""),
+		SecretKey:        getEnv("SECRET_KEY", ""),
 		AlbumCoverSize:   getEnv("ALBUM_COVER_SIZE", "xl"),
 		MaxSearchResults: uint64(getEnvUint("MAX_SEARCH_RESULTS", 9)),
 
-		// Shoot settings
 		MagazineSize:    getEnvUint("MAGAZINE_SIZE", 3),
 		BustProbability: getEnvUint("BUST_PROBABILITY", 50),
+
+		DisableUI:             getEnvBool("DISABLE_UI", false),
+		DisableSlashCommands:  getEnvBool("DISABLE_SLASH_COMMANDS", false),
+		DisablePrefixCommands: getEnvBool("DISABLE_PREFIX_COMMANDS", false),
+		DisableMusic:          getEnvBool("DISABLE_MUSIC", false),
+		DisableShoot:          getEnvBool("DISABLE_SHOOT", false),
 	}
 
 	if getEnvBool("DEBUG", false) {
@@ -103,8 +109,8 @@ func New() (*Config, error) {
 }
 
 func (c *Config) Validate() error {
-	if c.ApplicationID == "" || c.Token == "" || c.ArlCookie == "" || c.SecretKey == "" {
-		return errors.New("all required fields must be set")
+	if c.ApplicationID == "" || c.BotToken == "" {
+		return errors.New("application id and bot token must be set")
 	}
 
 	l := len(c.Prefix)
@@ -120,8 +126,8 @@ func (c *Config) Validate() error {
 		return errors.New("UI address must be set")
 	}
 
-	if c.DisableSlashCommands && c.DisablePrefixCommands {
-		return errors.New("at least one of slash commands or prefix commands must be enabled")
+	if !c.DisableMusic && (c.ArlCookie == "" || c.SecretKey == "") {
+		return errors.New("ARL_COOKIE and SECRET_KEY must be set if DISABLE_MUSIC is false")
 	}
 
 	allowedSizes := map[string]bool{
@@ -140,6 +146,10 @@ func (c *Config) Validate() error {
 
 	if c.BustProbability > 100 {
 		return errors.New("bust probability must be between 0 and 100")
+	}
+
+	if c.DisableSlashCommands && c.DisablePrefixCommands {
+		return errors.New("at least one of slash commands or prefix commands must be enabled")
 	}
 
 	return nil

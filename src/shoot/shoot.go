@@ -84,7 +84,7 @@ func (ss *ShootService) GetMagazine(userID string) (q *Magazine) {
 	return
 }
 
-func (ss *ShootService) HandleShoot(args []string, m *discordgo.MessageCreate) *discordgo.MessageSend {
+func (ss *ShootService) HandleShoot(args string, m *discordgo.MessageCreate) *discordgo.MessageSend {
 	response, guild, voiceChannelID := ss.us.GetVoiceChannelID(m.Member, m.GuildID, m.Author.ID)
 	if voiceChannelID == "" {
 		return ss.us.EmbedMessage(response)

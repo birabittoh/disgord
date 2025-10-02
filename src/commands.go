@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"slices"
-	"strings"
 
 	"github.com/birabittoh/disgord/src/config"
 	gl "github.com/birabittoh/disgord/src/globals"
@@ -22,11 +21,11 @@ type BotService struct {
 	ss *shoot.ShootService
 	ui *ui.UIService
 
-	logger       *mylog.Logger
-	cmdMap       map[string]func(arg string, i *discordgo.InteractionCreate) *discordgo.MessageSend
-	handlersMap  map[string]gl.BotCommand
-	aliasMap     map[string]string
-	commandNames []string
+	logger          *mylog.Logger
+	interactionsMap map[string]gl.BotInteraction
+	handlersMap     map[string]gl.BotCommand
+	aliasMap        map[string]string
+	commandNames    []string
 }
 
 func NewBotService(cfg *config.Config) (bs *BotService, err error) {
@@ -36,17 +35,25 @@ func NewBotService(cfg *config.Config) (bs *BotService, err error) {
 	}
 	bs.logger = mylog.New(os.Stdout, "main", bs.us.Config.LogLevel)
 
-	bs.us.Session, err = discordgo.New("Bot " + bs.us.Config.Token)
+	bs.us.Session, err = discordgo.New("Bot " + bs.us.Config.BotToken)
 	if err != nil {
 		return nil, errors.New("could not create bot session: " + err.Error())
 	}
 
-	bs.ss = shoot.NewShootService(bs.us)
-	bs.ms, err = music.NewMusicService(bs.us)
-	if err != nil {
-		return nil, errors.New("could not initialize music service: " + err.Error())
+	if !bs.us.Config.DisableShoot {
+		bs.ss = shoot.NewShootService(bs.us)
 	}
-	bs.ui = ui.NewUIService(bs.us, bs.ms)
+
+	if !bs.us.Config.DisableMusic {
+		bs.ms, err = music.NewMusicService(bs.us)
+		if err != nil {
+			return nil, errors.New("could not initialize music service: " + err.Error())
+		}
+	}
+
+	if !bs.us.Config.DisableUI {
+		bs.ui = ui.NewUIService(bs.us, bs.ms)
+	}
 
 	bs.initHandlers()
 	bs.us.Session.AddHandler(bs.messageHandler)
@@ -70,7 +77,9 @@ func (bs *BotService) Start() error {
 		}
 	}()
 
-	go bs.ui.Start()
+	if bs.ui != nil {
+		go bs.ui.Start()
+	}
 
 	return nil
 }
@@ -92,16 +101,38 @@ func (bs *BotService) initHandlers() {
 	}
 
 	bs.handlersMap = map[string]gl.BotCommand{
-		"echo":   {ShortCode: "e", Handler: bs.handleEcho, Help: "echoes a message", SlashOptions: defaultSearchOptions},
-		"play":   {ShortCode: "p", Handler: bs.ms.HandlePlay, Help: "plays a song", SlashOptions: defaultSearchOptions},
-		"search": {ShortCode: "f", Handler: bs.ms.HandleSearch, Help: "searches for a song", SlashOptions: defaultSearchOptions},
-		"lyrics": {ShortCode: "l", Handler: bs.ms.HandleLyrics, Help: "shows the lyrics of the current song"},
-		"skip":   {ShortCode: "s", Handler: bs.ms.HandleSkip, Help: "skips the current song"},
-		"queue":  {ShortCode: "q", Handler: bs.ms.HandleQueue, Help: "shows the current queue"},
-		"clear":  {ShortCode: "c", Handler: bs.ms.HandleClear, Help: "clears the current queue"},
-		"leave":  {Alias: "stop", Handler: bs.ms.HandleLeave, Help: "leaves the voice channel"},
-		"shoot":  {Alias: "bang", Handler: bs.ss.HandleShoot, Help: "shoots a random user in your voice channel"},
-		"help":   {ShortCode: "h", Handler: bs.handleHelp, Help: "shows this help message"},
+		"help":   {ShortCode: "h", Handler: bs.handleHelp, Help: "shows a help message", Tag: "general"},
+		"echo":   {ShortCode: "e", Handler: bs.handleEcho, Help: "echoes a message", SlashOptions: defaultSearchOptions, Tag: "general"},
+		"play":   {ShortCode: "p", Handler: bs.ms.HandlePlay, Help: "plays a song", SlashOptions: defaultSearchOptions, Tag: "music"},
+		"search": {ShortCode: "f", Handler: bs.ms.HandleSearch, Help: "searches for a song", SlashOptions: defaultSearchOptions, Tag: "music"},
+		"lyrics": {ShortCode: "l", Handler: bs.ms.HandleLyrics, Help: "shows the lyrics of the current song", Tag: "music"},
+		"skip":   {ShortCode: "s", Handler: bs.ms.HandleSkip, Help: "skips the current song", Tag: "music"},
+		"queue":  {ShortCode: "q", Handler: bs.ms.HandleQueue, Help: "shows the current queue", Tag: "music"},
+		"clear":  {ShortCode: "c", Handler: bs.ms.HandleClear, Help: "clears the current queue", Tag: "music"},
+		"leave":  {Alias: "stop", Handler: bs.ms.HandleLeave, Help: "leaves the voice channel", Tag: "music"},
+		"shoot":  {Alias: "bang", Handler: bs.ss.HandleShoot, Help: "shoots a random user in your voice channel", Tag: "shoot"},
+	}
+
+	bs.interactionsMap = map[string]gl.BotInteraction{
+		"choose_track": {Handler: bs.ms.HandleChooseTrack, Tag: "music"},
+	}
+
+	for key, cmd := range bs.handlersMap {
+		if cmd.Tag == "shoot" && bs.us.Config.DisableShoot {
+			delete(bs.handlersMap, key)
+		}
+		if cmd.Tag == "music" && bs.us.Config.DisableMusic {
+			delete(bs.handlersMap, key)
+		}
+	}
+
+	for key, interaction := range bs.interactionsMap {
+		if interaction.Tag == "music" && bs.us.Config.DisableMusic {
+			delete(bs.interactionsMap, key)
+		}
+		if interaction.Tag == "shoot" && bs.us.Config.DisableShoot {
+			delete(bs.interactionsMap, key)
+		}
 	}
 
 	for command, botCommand := range bs.handlersMap {
@@ -120,10 +151,6 @@ func (bs *BotService) initHandlers() {
 	}
 
 	slices.Sort(bs.commandNames)
-
-	bs.cmdMap = map[string]func(arg string, i *discordgo.InteractionCreate) *discordgo.MessageSend{
-		"choose_track": bs.ms.HandleChooseTrack,
-	}
 }
 
 func (bs *BotService) getCommand(name string) *gl.BotCommand {
@@ -158,14 +185,14 @@ func (bs *BotService) handleCommand(m *discordgo.MessageCreate) (response *disco
 	return
 }
 
-func (bs *BotService) handleEcho(args []string, m *discordgo.MessageCreate) *discordgo.MessageSend {
+func (bs *BotService) handleEcho(args string, m *discordgo.MessageCreate) *discordgo.MessageSend {
 	if len(args) == 0 {
 		return nil
 	}
-	return bs.us.EmbedMessage(strings.Join(args, " "))
+	return bs.us.EmbedMessage(args)
 }
 
-func (bs *BotService) handleHelp(args []string, m *discordgo.MessageCreate) *discordgo.MessageSend {
+func (bs *BotService) handleHelp(args string, m *discordgo.MessageCreate) *discordgo.MessageSend {
 	helpText := gl.MsgHelp
 
 	for _, command := range bs.commandNames {

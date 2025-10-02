@@ -29,6 +29,11 @@ func (ui *UIService) guildsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (ui *UIService) queuesHandler(w http.ResponseWriter, r *http.Request) {
+	if ui.ms == nil {
+		jsonSuccess(w, []any{})
+		return
+	}
+
 	response := []map[string]any{}
 	for guildID, queue := range ui.ms.Queues {
 		response = append(response, map[string]any{
@@ -45,6 +50,11 @@ func (ui *UIService) queuesCommandsHandler(w http.ResponseWriter, r *http.Reques
 }
 
 func (ui *UIService) queuesCommandHandler(w http.ResponseWriter, r *http.Request) {
+	if ui.ms == nil {
+		jsonError(w, "Music service is disabled", http.StatusServiceUnavailable)
+		return
+	}
+
 	guildID := r.PathValue("guild_id")
 	if guildID == "" {
 		jsonError(w, "Guild ID is required", http.StatusBadRequest)

@@ -119,14 +119,14 @@ func (bs *BotService) slashHandler(s *discordgo.Session, i *discordgo.Interactio
 		}
 
 		cmd, arg := splitResult[0], splitResult[1]
-		handler, found := bs.cmdMap[cmd]
+		bi, found := bs.interactionsMap[cmd]
 		if !found {
 			response := bs.us.EmbedToResponse(bs.us.EmbedMessage(gl.MsgUnknownCommand))
 			s.InteractionRespond(i.Interaction, response)
 			return
 		}
 
-		response := handler(arg, i)
+		response := bi.Handler(arg, i)
 		if response != nil {
 			resp := bs.us.EmbedToResponse(response)
 			s.InteractionRespond(i.Interaction, resp)
@@ -154,7 +154,7 @@ func (bs *BotService) slashHandler(s *discordgo.Session, i *discordgo.Interactio
 		}
 
 		m := bs.us.InteractionToMessageCreate(i, args)
-		response := bs.us.EmbedToResponse(bc.Handler(args, m))
+		response := bs.us.EmbedToResponse(bc.Handler(args[0], m))
 		s.InteractionRespond(i.Interaction, response)
 
 	default:
