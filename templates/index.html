@@ -959,6 +959,16 @@ function renderQueue(guildId, queue, selectedChannel) {
         }
 
         async function handleToggleBot() {
+            const btn = document.getElementById('bot-toggle-btn');
+            if (botEnabled) {
+                if (!confirm('Are you sure you want to disable the bot?')) {
+                    return;
+                }
+            }
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = 'Loading...';
+            }
             try {
                 const res = await fetch(`${API_BASE}/api/bot/state`, {
                     method: 'POST',
@@ -971,6 +981,11 @@ function renderQueue(guildId, queue, selectedChannel) {
                 showToast(botEnabled ? 'Bot enabled' : 'Bot disabled', 'success');
             } catch {
                 showToast('Failed to toggle bot state', 'error');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    updateBotToggleBtn();
+                }
             }
         }
 
