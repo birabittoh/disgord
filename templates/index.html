@@ -584,13 +584,21 @@ function renderGuilds(preserveInputs = false) {
         return;
     }
 
-    // Salva i valori degli input prima di re-renderizzare
+    // Save input values before re-rendering
     const inputValues = {};
+    let focusedInputId = null;
+    let selectionStart = null;
+    let selectionEnd = null;
     if (preserveInputs) {
         guildsData.forEach(guild => {
             const input = document.getElementById(`url-${guild.id}`);
             if (input) {
                 inputValues[guild.id] = input.value;
+                if (document.activeElement === input) {
+                    focusedInputId = input.id;
+                    selectionStart = input.selectionStart;
+                    selectionEnd = input.selectionEnd;
+                }
             }
         });
     }
@@ -601,7 +609,7 @@ function renderGuilds(preserveInputs = false) {
         </div>
     `;
 
-    // Ripristina i valori degli input
+    // Restore input values after re-rendering
     if (preserveInputs) {
         Object.keys(inputValues).forEach(guildId => {
             const input = document.getElementById(`url-${guildId}`);
@@ -609,6 +617,16 @@ function renderGuilds(preserveInputs = false) {
                 input.value = inputValues[guildId];
             }
         });
+        // Restore focus and selection
+        if (focusedInputId) {
+            const focusedInput = document.getElementById(focusedInputId);
+            if (focusedInput) {
+                focusedInput.focus();
+                if (selectionStart !== null && selectionEnd !== null) {
+                    focusedInput.setSelectionRange(selectionStart, selectionEnd);
+                }
+            }
+        }
     }
 
     // Add Enter key event listener to play-form inputs
@@ -809,13 +827,15 @@ function renderQueue(guildId, queue, selectedChannel) {
                 return;
             }
 
-            if (!urlInput.value.trim()) {
+            const query = urlInput.value.trim();
+
+            if (!query) {
                 showToast('Type a search query first', 'error');
                 return;
             }
 
-            await sendCommand(guildId, 'play', urlInput.value, selectedChannel);
             urlInput.value = '';
+            await sendCommand(guildId, 'play', query, selectedChannel);
         }
 
         async function handleSkip(guildId) {

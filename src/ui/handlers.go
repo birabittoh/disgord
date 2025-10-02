@@ -134,6 +134,5 @@ func (ui *UIService) handleQueueStop(guildID string, payload QueueCommandPayload
 }
 
 func (ui *UIService) healthzHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("ok"))
+	w.WriteHeader(http.StatusNoContent)
 }
