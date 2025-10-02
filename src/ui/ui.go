@@ -52,6 +52,7 @@ func NewUIService(us *globals.UtilsService, ms *music.MusicService) *UIService {
 	ui.mux.HandleFunc("POST /api/guilds/{id}/leave", ui.guildLeaveHandler)
 	ui.mux.HandleFunc("GET /api/queues/commands", ui.queuesCommandsHandler)
 	ui.mux.HandleFunc("POST /api/queues/{guild_id}", ui.queuesCommandHandler)
+	ui.mux.HandleFunc("GET /healthz", ui.healthzHandler)
 
 	return ui
 }
