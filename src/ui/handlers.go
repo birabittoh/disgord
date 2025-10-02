@@ -12,6 +12,7 @@ import (
 func (ui *UIService) indexHandler(w http.ResponseWriter, r *http.Request) {
 	var b bytes.Buffer
 	err := ui.indexTemplate.Execute(&b, map[string]any{
+		"BotName":  ui.us.Session.State.User.Username,
 		"CommitID": globals.CommitID,
 		"Link":     ui.us.GetInviteLink(),
 	})
