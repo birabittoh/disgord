@@ -68,6 +68,9 @@
             gap: 10px;
             color: var(--text-secondary);
         }
+        .status.disabled {
+            color: #888888;
+        }
 
         .status-dot {
             width: 10px;
@@ -75,6 +78,10 @@
             border-radius: 50%;
             background: var(--success);
             animation: pulse 2s infinite;
+        }
+        .status-dot.disabled {
+            background: #888888;
+            animation: none;
         }
 
         @keyframes pulse {
@@ -355,6 +362,15 @@
             background: #c93538;
         }
 
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #2e8b4e;
+        }
+
         .btn-secondary {
             background: var(--bg-tertiary);
             color: var(--text-primary);
@@ -485,12 +501,13 @@
             <div class="header-content">
                 <div class="header-left">
                     <h1>🎵 {{ .BotName }}</h1>
-                    <div class="status">
-                        <span class="status-dot"></span>
-                        <span>Online</span>
+                    <div class="status" id="bot-status">
+                        <span class="status-dot" id="bot-status-dot"></span>
+                        <span id="bot-status-text">Online</span>
                     </div>
                 </div>
                 <div class="header-right">
+                    <button id="bot-toggle-btn" class="btn-primary" onclick="handleToggleBot()">Turn Off</button>
                     <div class="version-badge">📌 {{ .CommitID }}</div>
                     <a href="{{ .Link }}" target="_blank" class="invite-link">➕ Invite</a>
                 </div>
@@ -901,6 +918,64 @@ function renderQueue(guildId, queue, selectedChannel) {
                 startAutoRefresh();
             }
         });
+
+        // --- Bot On/Off Toggle Logic ---
+        let botEnabled = true; // Default, will be updated from backend
+
+        async function fetchBotState() {
+            try {
+                const res = await fetch(`${API_BASE}/api/bot/state`);
+                if (!res.ok) throw new Error();
+                const data = await res.json();
+                botEnabled = data.enabled;
+                updateBotToggleBtn();
+            } catch {
+                botEnabled = true;
+                updateBotToggleBtn();
+            }
+        }
+
+        function updateBotToggleBtn() {
+            const btn = document.getElementById('bot-toggle-btn');
+            if (btn) {
+                btn.textContent = botEnabled ? 'Turn Off' : 'Turn On';
+                btn.className = botEnabled ? 'btn-danger' : 'btn-success';
+            }
+            // Update status indicator
+            const status = document.getElementById('bot-status');
+            const dot = document.getElementById('bot-status-dot');
+            const text = document.getElementById('bot-status-text');
+            if (status && dot && text) {
+                if (botEnabled) {
+                    status.classList.remove('disabled');
+                    dot.classList.remove('disabled');
+                    text.textContent = 'Online';
+                } else {
+                    status.classList.add('disabled');
+                    dot.classList.add('disabled');
+                    text.textContent = 'Offline';
+                }
+            }
+        }
+
+        async function handleToggleBot() {
+            try {
+                const res = await fetch(`${API_BASE}/api/bot/state`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enabled: !botEnabled })
+                });
+                if (!res.ok) throw new Error();
+                botEnabled = !botEnabled;
+                updateBotToggleBtn();
+                showToast(botEnabled ? 'Bot enabled' : 'Bot disabled', 'success');
+            } catch {
+                showToast('Failed to toggle bot state', 'error');
+            }
+        }
+
+        // Fetch bot state on load
+        fetchBotState();
 
         fetchData();
         startAutoRefresh();

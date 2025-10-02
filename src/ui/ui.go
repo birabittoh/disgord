@@ -5,17 +5,17 @@ import (
 	"html/template"
 	"net/http"
 	"os"
+	"os/signal"
 
-	"github.com/birabittoh/disgord/src/globals"
-	"github.com/birabittoh/disgord/src/music"
+	"github.com/birabittoh/disgord/src/bot"
 	"github.com/birabittoh/disgord/src/mylog"
 )
 
 const sep = string(os.PathSeparator)
 
 type UIService struct {
-	us     *globals.UtilsService
-	ms     *music.MusicService
+	bs     *bot.BotService
+	sigch  chan os.Signal
 	logger *mylog.Logger
 
 	mux            *http.ServeMux
@@ -30,11 +30,14 @@ type QueueCommandPayload struct {
 	VoiceChannelID string `json:"voice_channel_id,omitempty"`
 }
 
-func NewUIService(us *globals.UtilsService, ms *music.MusicService) *UIService {
+type EnabledPayload struct {
+	Enabled bool `json:"enabled"`
+}
+
+func NewUIService(bs *bot.BotService) *UIService {
 	ui := &UIService{
-		us:            us,
-		ms:            ms,
-		logger:        mylog.New(os.Stdout, "ui", us.Config.LogLevel),
+		bs:            bs,
+		logger:        mylog.New(os.Stdout, "ui", bs.US.Config.LogLevel),
 		mux:           http.NewServeMux(),
 		indexTemplate: template.Must(template.ParseFiles("templates" + sep + "index.html")),
 	}
@@ -52,14 +55,30 @@ func NewUIService(us *globals.UtilsService, ms *music.MusicService) *UIService {
 	ui.mux.HandleFunc("POST /api/guilds/{id}/leave", ui.guildLeaveHandler)
 	ui.mux.HandleFunc("GET /api/queues/commands", ui.queuesCommandsHandler)
 	ui.mux.HandleFunc("POST /api/queues/{guild_id}", ui.queuesCommandHandler)
+	ui.mux.HandleFunc("GET /api/bot/state", ui.getBotStateHandler)
+	ui.mux.HandleFunc("POST /api/bot/state", ui.postBotStateHandler)
 	ui.mux.HandleFunc("GET /healthz", ui.healthzHandler)
 
 	return ui
 }
 
 func (ui *UIService) Start() error {
-	ui.logger.Infof("Starting UI server on %s", ui.us.Config.UIAddress)
-	return http.ListenAndServe(ui.us.Config.UIAddress, ui.mux)
+	ui.bs.Start()
+
+	ui.logger.Infof("Starting UI server on %s", ui.bs.US.Config.UIAddress)
+	go func() {
+		if err := http.ListenAndServe(ui.bs.US.Config.UIAddress, ui.mux); err != nil {
+			ui.logger.Errorf("UI server error: %s", err)
+			os.Exit(1)
+		}
+	}()
+
+	ui.sigch = make(chan os.Signal, 1)
+	signal.Notify(ui.sigch, os.Interrupt)
+	<-ui.sigch
+
+	ui.bs.Stop()
+	return nil
 }
 
 // Helper functions

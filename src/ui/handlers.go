@@ -12,9 +12,9 @@ import (
 func (ui *UIService) indexHandler(w http.ResponseWriter, r *http.Request) {
 	var b bytes.Buffer
 	err := ui.indexTemplate.Execute(&b, map[string]any{
-		"BotName":  ui.us.Session.State.User.Username,
+		"BotName":  ui.bs.US.Session.State.User.Username,
 		"CommitID": globals.CommitID,
-		"Link":     ui.us.GetInviteLink(),
+		"Link":     ui.bs.US.GetInviteLink(),
 	})
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
@@ -26,17 +26,17 @@ func (ui *UIService) indexHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (ui *UIService) guildsHandler(w http.ResponseWriter, r *http.Request) {
-	jsonSuccess(w, ui.us.Session.State.Guilds)
+	jsonSuccess(w, ui.bs.US.Session.State.Guilds)
 }
 
 func (ui *UIService) queuesHandler(w http.ResponseWriter, r *http.Request) {
-	if ui.ms == nil {
+	if ui.bs.MS == nil {
 		jsonSuccess(w, []any{})
 		return
 	}
 
 	response := []map[string]any{}
-	for guildID, queue := range ui.ms.Queues {
+	for guildID, queue := range ui.bs.MS.Queues {
 		response = append(response, map[string]any{
 			"guild_id":   guildID,
 			"channel_id": queue.VoiceChannelID(),
@@ -51,7 +51,7 @@ func (ui *UIService) queuesCommandsHandler(w http.ResponseWriter, r *http.Reques
 }
 
 func (ui *UIService) queuesCommandHandler(w http.ResponseWriter, r *http.Request) {
-	if ui.ms == nil {
+	if ui.bs.MS == nil {
 		jsonError(w, "Music service is disabled", http.StatusServiceUnavailable)
 		return
 	}
@@ -91,7 +91,7 @@ func (ui *UIService) guildLeaveHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := ui.us.Session.GuildLeave(guildID)
+	err := ui.bs.US.Session.GuildLeave(guildID)
 	if err != nil {
 		jsonError(w, "Failed to leave guild", http.StatusInternalServerError)
 		return
@@ -107,12 +107,12 @@ func (ui *UIService) handleQueuePlay(guildID string, payload QueueCommandPayload
 		return errors.New("VoiceChannelID is required for play command")
 	}
 
-	_, _, err := ui.ms.PlayToVC(payload.Args, payload.VoiceChannelID, guildID)
+	_, _, err := ui.bs.MS.PlayToVC(payload.Args, payload.VoiceChannelID, guildID)
 	return err
 }
 
 func (ui *UIService) handleQueueClear(guildID string, payload QueueCommandPayload) error {
-	queue := ui.ms.GetQueue(guildID)
+	queue := ui.bs.MS.GetQueue(guildID)
 	if queue == nil {
 		return errors.New("no active queue for this guild")
 	}
@@ -121,16 +121,42 @@ func (ui *UIService) handleQueueClear(guildID string, payload QueueCommandPayloa
 }
 
 func (ui *UIService) handleQueueSkip(guildID string, payload QueueCommandPayload) error {
-	queue := ui.ms.GetQueue(guildID)
+	queue := ui.bs.MS.GetQueue(guildID)
 	if queue == nil {
 		return errors.New("no active queue for this guild")
 	}
-	return queue.PlayNext(ui.ms, true)
+	return queue.PlayNext(ui.bs.MS, true)
 }
 
 func (ui *UIService) handleQueueStop(guildID string, payload QueueCommandPayload) error {
-	ui.ms.DeleteQueue(guildID)
+	ui.bs.MS.DeleteQueue(guildID)
 	return nil
+}
+
+func (ui *UIService) getBotStateHandler(w http.ResponseWriter, r *http.Request) {
+	jsonSuccess(w, EnabledPayload{Enabled: ui.bs.IsRunning()})
+}
+
+func (ui *UIService) postBotStateHandler(w http.ResponseWriter, r *http.Request) {
+	var payload EnabledPayload
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		jsonError(w, "Invalid JSON payload", http.StatusBadRequest)
+		return
+	}
+
+	if payload.Enabled {
+		if !ui.bs.IsRunning() {
+			if err := ui.bs.Start(); err != nil {
+				jsonError(w, "Failed to start bot: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
+	} else {
+		if ui.bs.IsRunning() {
+			ui.bs.Stop()
+		}
+	}
+	jsonSuccess(w, EnabledPayload{Enabled: ui.bs.IsRunning()})
 }
 
 func (ui *UIService) healthzHandler(w http.ResponseWriter, r *http.Request) {

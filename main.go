@@ -1,9 +1,9 @@
 package main
 
-import "github.com/birabittoh/disgord/src"
+import "github.com/birabittoh/disgord/src/ui"
 
 func main() {
-	if err := src.Main(); err != nil {
+	if err := ui.Main(); err != nil {
 		panic(err)
 	}
 }

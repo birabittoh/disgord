@@ -1,5 +1,4 @@
-// Package slash handles Discord slash command registration and interactions.
-package src
+package bot
 
 import (
 	"fmt"
@@ -14,7 +13,7 @@ registerSlashCommands efficiently registers all commands in handlersMap as Disco
 It only deletes obsolete commands, creates new ones, and updates changed ones.
 */
 func (bs *BotService) registerSlashCommands() error {
-	existingCommands, err := bs.us.Session.ApplicationCommands(bs.us.Session.State.User.ID, "")
+	existingCommands, err := bs.US.Session.ApplicationCommands(bs.US.Session.State.User.ID, "")
 	if err != nil {
 		return err
 	}
@@ -22,7 +21,7 @@ func (bs *BotService) registerSlashCommands() error {
 	bs.logger.Debug("Slash commands registration started")
 
 	desired := map[string]*discordgo.ApplicationCommand{}
-	if !bs.us.Config.DisableSlashCommands {
+	if !bs.US.Config.DisableSlashCommands {
 		for name, botCommand := range bs.handlersMap {
 			options := []*discordgo.ApplicationCommandOption{}
 			for _, opt := range botCommand.SlashOptions {
@@ -57,7 +56,7 @@ func (bs *BotService) registerSlashCommands() error {
 	// Delete obsolete commands
 	for _, cmd := range existingCommands {
 		if _, ok := desired[cmd.Name]; !ok {
-			err := bs.us.Session.ApplicationCommandDelete(bs.us.Session.State.User.ID, "", cmd.ID)
+			err := bs.US.Session.ApplicationCommandDelete(bs.US.Session.State.User.ID, "", cmd.ID)
 			if err != nil {
 				return err
 			}
@@ -75,7 +74,7 @@ func (bs *BotService) registerSlashCommands() error {
 			}
 		}
 		if found == nil {
-			created, err := bs.us.Session.ApplicationCommandCreate(bs.us.Config.ApplicationID, "", desiredCmd)
+			created, err := bs.US.Session.ApplicationCommandCreate(bs.US.Config.ApplicationID, "", desiredCmd)
 			if err != nil {
 				return err
 			}
@@ -93,7 +92,7 @@ func (bs *BotService) registerSlashCommands() error {
 				}
 			}
 			if changed {
-				updated, err := bs.us.Session.ApplicationCommandEdit(bs.us.Config.ApplicationID, "", found.ID, desiredCmd)
+				updated, err := bs.US.Session.ApplicationCommandEdit(bs.US.Config.ApplicationID, "", found.ID, desiredCmd)
 				if err != nil {
 					return err
 				}
@@ -113,7 +112,7 @@ func (bs *BotService) slashHandler(s *discordgo.Session, i *discordgo.Interactio
 		customID := i.MessageComponentData().CustomID
 		splitResult := strings.SplitN(customID, ":", 2)
 		if len(splitResult) != 2 {
-			response := bs.us.EmbedToResponse(bs.us.EmbedMessage(gl.MsgUnknownCommand))
+			response := bs.US.EmbedToResponse(bs.US.EmbedMessage(gl.MsgUnknownCommand))
 			s.InteractionRespond(i.Interaction, response)
 			return
 		}
@@ -121,27 +120,27 @@ func (bs *BotService) slashHandler(s *discordgo.Session, i *discordgo.Interactio
 		cmd, arg := splitResult[0], splitResult[1]
 		bi, found := bs.interactionsMap[cmd]
 		if !found {
-			response := bs.us.EmbedToResponse(bs.us.EmbedMessage(gl.MsgUnknownCommand))
+			response := bs.US.EmbedToResponse(bs.US.EmbedMessage(gl.MsgUnknownCommand))
 			s.InteractionRespond(i.Interaction, response)
 			return
 		}
 
 		response := bi.Handler(arg, i)
 		if response != nil {
-			resp := bs.us.EmbedToResponse(response)
+			resp := bs.US.EmbedToResponse(response)
 			s.InteractionRespond(i.Interaction, resp)
 		}
 		return
 
 	case discordgo.InteractionApplicationCommand:
-		if bs.us.Config.DisableSlashCommands {
+		if bs.US.Config.DisableSlashCommands {
 			return
 		}
 
 		name := i.ApplicationCommandData().Name
 		bc := bs.getCommand(name)
 		if bc == nil {
-			response := bs.us.EmbedToResponse(bs.us.EmbedMessage(fmt.Sprintf(gl.MsgUnknownCommand, name)))
+			response := bs.US.EmbedToResponse(bs.US.EmbedMessage(fmt.Sprintf(gl.MsgUnknownCommand, name)))
 			s.InteractionRespond(i.Interaction, response)
 			return
 		}
@@ -153,8 +152,8 @@ func (bs *BotService) slashHandler(s *discordgo.Session, i *discordgo.Interactio
 			}
 		}
 
-		m := bs.us.InteractionToMessageCreate(i, args)
-		response := bs.us.EmbedToResponse(bc.Handler(args[0], m))
+		m := bs.US.InteractionToMessageCreate(i, args)
+		response := bs.US.EmbedToResponse(bc.Handler(args[0], m))
 		s.InteractionRespond(i.Interaction, response)
 
 	default:
