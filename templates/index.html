@@ -131,12 +131,6 @@
             border: 1px solid var(--border);
             border-radius: 8px;
             padding: 20px;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        .guild-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(88, 101, 242, 0.1);
         }
 
         .guild-header {
@@ -734,7 +728,7 @@ function renderQueue(guildId, queue, selectedChannel) {
             <div class="queue-header">
                 <span class="now-playing">▶️ Now playing</span>
                 <span style="color: var(--text-secondary); font-size: 0.85rem;">
-                    ${queue.tracks ? queue.tracks.length : 0} brani
+                    ${queue.tracks ? queue.tracks.length : 0} track(s)
                 </span>
             </div>
             ${currentTrack ? `
@@ -773,13 +767,7 @@ function renderQueue(guildId, queue, selectedChannel) {
 }
 
         function renderNoQueue(guildId, selectedChannel) {
-            return `
-                <div style="text-align: center; padding: 20px; color: var(--text-secondary);">
-                    <p>No active queue</p>
-                    ${selectedChannel ? '<p style="font-size: 0.85rem; margin-top: 8px;">Add a new track below</p>' : ''}
-                </div>
-                ${renderPlayForm(guildId, selectedChannel)}
-            `;
+            return renderPlayForm(guildId, selectedChannel);
         }
 
         function renderPlayForm(guildId, selectedChannel) {
@@ -791,12 +779,12 @@ function renderQueue(guildId, queue, selectedChannel) {
                         type="text" 
                         id="url-${guildId}" 
                         placeholder="${hasSelection ? 'Search query...' : 'Select a voice channel first'}"
-                        ${!hasSelection ? 'disabled' : ''}
+                        ${!hasSelection ? 'disabled style="display: none;"' : ''}
                     >
                     <button 
                         class="btn-primary" 
                         onclick="handlePlay('${guildId}')"
-                        ${!hasSelection ? 'disabled' : ''}
+                        ${!hasSelection ? 'disabled style="display: none;"' : ''}
                     >
                         ▶️ Play
                     </button>
