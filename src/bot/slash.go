@@ -145,15 +145,16 @@ func (bs *BotService) slashHandler(s *discordgo.Session, i *discordgo.Interactio
 			return
 		}
 
-		args := []string{}
+		var args []string
 		for _, opt := range i.ApplicationCommandData().Options {
 			if opt.Type == discordgo.ApplicationCommandOptionString {
 				args = append(args, opt.StringValue())
 			}
 		}
+		argsCombined := strings.Join(args, " ")
 
-		m := bs.US.InteractionToMessageCreate(i, args)
-		response := bs.US.EmbedToResponse(bc.Handler(args[0], m))
+		m := bs.US.InteractionToMessageCreate(i, argsCombined)
+		response := bs.US.EmbedToResponse(bc.Handler(argsCombined, m))
 		s.InteractionRespond(i.Interaction, response)
 
 	default:

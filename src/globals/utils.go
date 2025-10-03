@@ -114,7 +114,7 @@ func (us *UtilsService) EmbedToResponse(msg *discordgo.MessageSend) *discordgo.I
 }
 
 // InteractionToMessageCreate converts an InteractionCreate to a MessageCreate.
-func (us *UtilsService) InteractionToMessageCreate(i *discordgo.InteractionCreate, args []string) *discordgo.MessageCreate {
+func (us *UtilsService) InteractionToMessageCreate(i *discordgo.InteractionCreate, args string) *discordgo.MessageCreate {
 	m := &discordgo.MessageCreate{
 		Message: &discordgo.Message{
 			GuildID:   i.GuildID,
@@ -128,9 +128,7 @@ func (us *UtilsService) InteractionToMessageCreate(i *discordgo.InteractionCreat
 		m.Author = i.User
 	}
 
-	if len(args) > 0 {
-		m.Content = strings.Join(args, " ")
-	}
+	m.Content = args
 
 	return m
 }
