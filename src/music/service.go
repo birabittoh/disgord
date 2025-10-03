@@ -5,9 +5,9 @@ import (
 	"time"
 
 	"github.com/birabittoh/disgord/src/globals"
-	"github.com/birabittoh/disgord/src/mylog"
 	"github.com/birabittoh/miri"
 	"github.com/birabittoh/miri/deezer"
+	"github.com/birabittoh/mylo"
 	"github.com/bwmarrin/discordgo"
 )
 
@@ -15,7 +15,7 @@ type MusicService struct {
 	us *globals.UtilsService
 
 	Client   *miri.Client
-	Logger   *mylog.Logger
+	Logger   *mylo.Logger
 	Queues   map[string]*Queue
 	Searches map[string][]miri.SongResult
 }
@@ -35,7 +35,7 @@ func NewMusicService(us *globals.UtilsService) (*MusicService, error) {
 	return &MusicService{
 		us:       us,
 		Client:   client,
-		Logger:   mylog.New(os.Stdout, "music", us.Config.LogLevel),
+		Logger:   mylo.New(os.Stdout, globals.LoggerMusic, us.Config.LogLevel, globals.LogFlags),
 		Queues:   make(map[string]*Queue),
 		Searches: make(map[string][]miri.SongResult),
 	}, nil

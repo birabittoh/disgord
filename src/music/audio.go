@@ -7,18 +7,10 @@ import (
 	"os/exec"
 	"strconv"
 
+	gl "github.com/birabittoh/disgord/src/globals"
 	"github.com/birabittoh/miri"
 	"github.com/bwmarrin/discordgo"
 	"layeh.com/gopus"
-)
-
-const (
-	AudioChannels    int    = 2
-	AudioFrameRate   int    = 48000
-	AudioFrameSize   int    = 960
-	AudioBitrate     int    = 128
-	AudioApplication string = "voip"
-	MaxBytes         int    = (AudioFrameSize * AudioChannels) * 2
 )
 
 type Audio struct {
@@ -42,14 +34,14 @@ func NewAudio(track *miri.SongResult, vc *discordgo.VoiceConnection, ms *MusicSe
 		ms:         ms,
 	}
 
-	a.opusEncoder, err = gopus.NewEncoder(AudioFrameRate, AudioChannels, gopus.Voip)
+	a.opusEncoder, err = gopus.NewEncoder(gl.AudioFrameRate, gl.AudioChannels, gopus.Voip)
 	if err != nil {
 		ms.Logger.Error("NewEncoder Error:", err)
 		return
 	}
 
-	bitrate := AudioBitrate
-	if AudioBitrate < 1 || AudioBitrate > 512 {
+	bitrate := gl.AudioBitrate
+	if gl.AudioBitrate < 1 || gl.AudioBitrate > 512 {
 		bitrate = 64
 	}
 
@@ -69,8 +61,8 @@ func (a *Audio) downloader(track *miri.SongResult) {
 		"-i", "pipe:0",
 		"-f", "s16le",
 		"-acodec", "pcm_s16le",
-		"-ar", strconv.Itoa(AudioFrameRate),
-		"-ac", strconv.Itoa(AudioChannels),
+		"-ar", strconv.Itoa(gl.AudioFrameRate),
+		"-ac", strconv.Itoa(gl.AudioChannels),
 		"pipe:1")
 	ffmpegStdin, err := a.ffmpegCmd.StdinPipe()
 	if err != nil {
@@ -100,7 +92,7 @@ func (a *Audio) reader() {
 	stdin := bufio.NewReaderSize(a.ffmpegStream, 16384)
 
 	for {
-		buf := make([]int16, AudioFrameSize*AudioChannels)
+		buf := make([]int16, gl.AudioFrameSize*gl.AudioChannels)
 
 		err = binary.Read(stdin, binary.LittleEndian, &buf)
 		if err == io.EOF {
@@ -140,7 +132,7 @@ func (a *Audio) encoder() {
 		}
 
 		// try encoding pcm frame with Opus
-		opus, err := a.opusEncoder.Encode(pcm, AudioFrameSize, MaxBytes)
+		opus, err := a.opusEncoder.Encode(pcm, gl.AudioFrameSize, gl.MaxBytes)
 		if err != nil {
 			a.ms.Logger.Error("Encoding Error:", err)
 			return

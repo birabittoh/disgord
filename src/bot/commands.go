@@ -9,8 +9,8 @@ import (
 	"github.com/birabittoh/disgord/src/config"
 	gl "github.com/birabittoh/disgord/src/globals"
 	"github.com/birabittoh/disgord/src/music"
-	"github.com/birabittoh/disgord/src/mylog"
 	"github.com/birabittoh/disgord/src/shoot"
+	"github.com/birabittoh/mylo"
 	"github.com/bwmarrin/discordgo"
 )
 
@@ -19,7 +19,7 @@ type BotService struct {
 	MS *music.MusicService
 	SS *shoot.ShootService
 
-	logger          *mylog.Logger
+	logger          *mylo.Logger
 	interactionsMap map[string]gl.BotInteraction
 	handlersMap     map[string]gl.BotCommand
 	aliasMap        map[string]string
@@ -38,7 +38,7 @@ func NewBotService(cfg *config.Config) (bs *BotService, err error) {
 		US:       gl.NewUtilsService(cfg),
 		aliasMap: make(map[string]string),
 	}
-	bs.logger = mylog.New(os.Stdout, "main", bs.US.Config.LogLevel)
+	bs.logger = mylo.New(os.Stdout, gl.LoggerMain, bs.US.Config.LogLevel, gl.LogFlags)
 
 	bs.US.Session, err = discordgo.New("Bot " + bs.US.Config.BotToken)
 	if err != nil {

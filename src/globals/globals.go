@@ -1,6 +1,9 @@
 package globals
 
 import (
+	"os"
+
+	"github.com/birabittoh/mylo"
 	"github.com/bwmarrin/discordgo"
 )
 
@@ -44,6 +47,21 @@ const (
 	DefaultSearchOptionName        = "input"
 	DefaultSearchOptionDescription = "command arguments"
 	DiscordPermissions             = 17825792
+
+	LogFlags    = mylo.DefaultFlags
+	LoggerMain  = "main "
+	LoggerMusic = "music"
+	LoggerShoot = "shoot"
+	LoggerUI    = "ui   "
+
+	AudioChannels    int    = 2
+	AudioFrameRate   int    = 48000
+	AudioFrameSize   int    = 960
+	AudioBitrate     int    = 128
+	AudioApplication string = "voip"
+	MaxBytes         int    = (AudioFrameSize * AudioChannels) * 2
+
+	Sep = string(os.PathSeparator)
 )
 
 var CommitID string

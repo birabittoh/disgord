@@ -7,14 +7,14 @@ import (
 	"time"
 
 	gl "github.com/birabittoh/disgord/src/globals"
-	"github.com/birabittoh/disgord/src/mylog"
+	"github.com/birabittoh/mylo"
 	"github.com/bwmarrin/discordgo"
 )
 
 type ShootService struct {
 	us *gl.UtilsService
 
-	logger    *mylog.Logger
+	logger    *mylo.Logger
 	magazines map[string]*Magazine
 }
 
@@ -34,7 +34,7 @@ func NewShootService(us *gl.UtilsService) *ShootService {
 
 	return &ShootService{
 		us:        us,
-		logger:    mylog.New(os.Stdin, "shoot", us.Config.LogLevel),
+		logger:    mylo.New(os.Stdout, gl.LoggerShoot, us.Config.LogLevel, gl.LogFlags),
 		magazines: make(map[string]*Magazine),
 	}
 }

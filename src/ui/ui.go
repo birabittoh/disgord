@@ -8,15 +8,14 @@ import (
 	"os/signal"
 
 	"github.com/birabittoh/disgord/src/bot"
-	"github.com/birabittoh/disgord/src/mylog"
+	"github.com/birabittoh/disgord/src/globals"
+	"github.com/birabittoh/mylo"
 )
-
-const sep = string(os.PathSeparator)
 
 type UIService struct {
 	bs     *bot.BotService
 	sigch  chan os.Signal
-	logger *mylog.Logger
+	logger *mylo.Logger
 
 	mux            *http.ServeMux
 	indexTemplate  *template.Template
@@ -37,9 +36,9 @@ type EnabledPayload struct {
 func NewUIService(bs *bot.BotService) *UIService {
 	ui := &UIService{
 		bs:            bs,
-		logger:        mylog.New(os.Stdout, "ui", bs.US.Config.LogLevel),
+		logger:        mylo.New(os.Stdout, globals.LoggerUI, bs.US.Config.LogLevel, globals.LogFlags),
 		mux:           http.NewServeMux(),
-		indexTemplate: template.Must(template.ParseFiles("templates" + sep + "index.html")),
+		indexTemplate: template.Must(template.ParseFiles("templates" + globals.Sep + "index.html")),
 	}
 
 	ui.validQueueCmds = map[string]func(string, QueueCommandPayload) error{
