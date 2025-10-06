@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎵</text></svg>">
 
-    <title>{{ .BotName }} - Dashboard</title>
+    <title>{{ .botName }} - Dashboard</title>
     <style>
         * {
             margin: 0;
@@ -495,7 +495,7 @@
         <header>
             <div class="header-content">
                 <div class="header-left">
-                    <h1>🎵 {{ .BotName }}</h1>
+                    <h1>🎵 {{ .botName }}</h1>
                     <div class="status" id="bot-status">
                         <span class="status-dot" id="bot-status-dot"></span>
                         <span id="bot-status-text">Online</span>
@@ -503,8 +503,8 @@
                 </div>
                 <div class="header-right">
                     <button id="bot-toggle-btn" class="btn-primary" onclick="handleToggleBot()">Turn Off</button>
-                    <div class="version-badge">📌 {{ .CommitID }}</div>
-                    <a href="{{ .Link }}" target="_blank" class="invite-link">➕ Invite</a>
+                    <div class="version-badge">📌 {{ .commitID }}</div>
+                    <a href="{{ .inviteLink }}" target="_blank" class="invite-link">➕ Invite</a>
                 </div>
             </div>
         </header>

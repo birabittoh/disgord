@@ -14,6 +14,7 @@ import (
 
 type UIService struct {
 	bs     *bot.BotService
+	us     *globals.UtilsService
 	sigch  chan os.Signal
 	logger *mylo.Logger
 
@@ -21,6 +22,8 @@ type UIService struct {
 	indexTemplate  *template.Template
 	validQueueCmds map[string]func(string, QueueCommandPayload) error
 	queueCmds      []string
+	botName        string
+	inviteLink     string
 }
 
 type QueueCommandPayload struct {
@@ -36,9 +39,12 @@ type EnabledPayload struct {
 func NewUIService(bs *bot.BotService) *UIService {
 	ui := &UIService{
 		bs:            bs,
+		us:            bs.US,
 		logger:        mylo.New(os.Stdout, globals.LoggerUI, bs.US.Config.LogLevel, globals.LogFlags),
 		mux:           http.NewServeMux(),
 		indexTemplate: template.Must(template.ParseFiles("templates" + globals.Sep + "index.html")),
+		botName:       bs.US.Session.State.User.Username,
+		inviteLink:    bs.US.GetInviteLink(),
 	}
 
 	ui.validQueueCmds = map[string]func(string, QueueCommandPayload) error{
@@ -62,11 +68,9 @@ func NewUIService(bs *bot.BotService) *UIService {
 }
 
 func (ui *UIService) Start() error {
-	ui.bs.Start()
-
-	ui.logger.Infof("Starting UI server on %s", ui.bs.US.Config.UIAddress)
+	ui.logger.Infof("Starting UI server on %s", ui.us.Config.UIAddress)
 	go func() {
-		if err := http.ListenAndServe(ui.bs.US.Config.UIAddress, ui.mux); err != nil {
+		if err := http.ListenAndServe(ui.us.Config.UIAddress, ui.mux); err != nil {
 			ui.logger.Errorf("UI server error: %s", err)
 			os.Exit(1)
 		}
@@ -78,6 +82,10 @@ func (ui *UIService) Start() error {
 
 	ui.bs.Stop()
 	return nil
+}
+
+func (ui *UIService) IsBotEnabled() bool {
+	return ui.bs != nil
 }
 
 // Helper functions

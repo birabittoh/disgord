@@ -24,13 +24,6 @@ type BotService struct {
 	handlersMap     map[string]gl.BotCommand
 	aliasMap        map[string]string
 	commandNames    []string
-
-	running bool
-}
-
-// IsRunning returns true if the bot is running.
-func (bs *BotService) IsRunning() bool {
-	return bs.running
 }
 
 func NewBotService(cfg *config.Config) (bs *BotService, err error) {
@@ -62,13 +55,12 @@ func NewBotService(cfg *config.Config) (bs *BotService, err error) {
 	bs.US.Session.AddHandler(bs.slashHandler)
 	bs.US.Session.AddHandler(bs.MS.HandleBotVSU)
 
+	bs.Start()
+
 	return bs, nil
 }
 
 func (bs *BotService) Start() error {
-	if bs.running {
-		return nil
-	}
 	err := bs.US.Session.Open()
 	if err != nil {
 		return errors.New("could not open session: " + err.Error())
@@ -82,18 +74,13 @@ func (bs *BotService) Start() error {
 	}()
 
 	bs.logger.Info("Bot started... Commit " + gl.CommitID)
-	bs.running = true
 	return nil
 }
 
 func (bs *BotService) Stop() {
-	if !bs.running {
-		return
-	}
 	if err := bs.US.Session.Close(); err != nil {
 		bs.logger.Errorf("could not close session: %s", err)
 	}
-	bs.running = false
 	bs.logger.Info("Bot stopped")
 }
 

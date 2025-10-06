@@ -21,10 +21,7 @@ func (ms *MusicService) PlayToVC(query string, vc string, guildID string) (respo
 
 	q := ms.GetOrCreateQueue(voice, vc)
 
-	opt := miri.SearchOptions{
-		Limit: 1,
-		Query: query,
-	}
+	opt := miri.SearchOptions{Limit: 1, Query: query}
 	results, err := ms.Client.SearchTracks(ms.us.Ctx, opt)
 	if err != nil {
 		ms.Logger.Errorf("could not search track: %v", err)

@@ -6,15 +6,16 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/birabittoh/disgord/src/bot"
 	"github.com/birabittoh/disgord/src/globals"
 )
 
 func (ui *UIService) indexHandler(w http.ResponseWriter, r *http.Request) {
 	var b bytes.Buffer
 	err := ui.indexTemplate.Execute(&b, map[string]any{
-		"BotName":  ui.bs.US.Session.State.User.Username,
-		"CommitID": globals.CommitID,
-		"Link":     ui.bs.US.GetInviteLink(),
+		"botName":    ui.botName,
+		"inviteLink": ui.inviteLink,
+		"commitID":   globals.CommitID,
 	})
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
@@ -26,11 +27,16 @@ func (ui *UIService) indexHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (ui *UIService) guildsHandler(w http.ResponseWriter, r *http.Request) {
-	jsonSuccess(w, ui.bs.US.Session.State.Guilds)
+	if !ui.IsBotEnabled() {
+		jsonSuccess(w, []any{})
+		return
+	}
+
+	jsonSuccess(w, ui.us.Session.State.Guilds)
 }
 
 func (ui *UIService) queuesHandler(w http.ResponseWriter, r *http.Request) {
-	if ui.bs.MS == nil {
+	if !ui.IsBotEnabled() || ui.bs.MS == nil {
 		jsonSuccess(w, []any{})
 		return
 	}
@@ -91,7 +97,7 @@ func (ui *UIService) guildLeaveHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := ui.bs.US.Session.GuildLeave(guildID)
+	err := ui.us.Session.GuildLeave(guildID)
 	if err != nil {
 		jsonError(w, "Failed to leave guild", http.StatusInternalServerError)
 		return
@@ -134,7 +140,7 @@ func (ui *UIService) handleQueueStop(guildID string, payload QueueCommandPayload
 }
 
 func (ui *UIService) getBotStateHandler(w http.ResponseWriter, r *http.Request) {
-	jsonSuccess(w, EnabledPayload{Enabled: ui.bs.IsRunning()})
+	jsonSuccess(w, EnabledPayload{Enabled: ui.IsBotEnabled()})
 }
 
 func (ui *UIService) postBotStateHandler(w http.ResponseWriter, r *http.Request) {
@@ -145,18 +151,22 @@ func (ui *UIService) postBotStateHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	if payload.Enabled {
-		if !ui.bs.IsRunning() {
-			if err := ui.bs.Start(); err != nil {
-				jsonError(w, "Failed to start bot: "+err.Error(), http.StatusInternalServerError)
+		if !ui.IsBotEnabled() {
+			var err error
+			ui.bs, err = bot.NewBotService(ui.us.Config)
+			if err != nil {
+				jsonError(w, "Failed to create bot service: "+err.Error(), http.StatusInternalServerError)
 				return
 			}
 		}
 	} else {
-		if ui.bs.IsRunning() {
+		if ui.IsBotEnabled() {
 			ui.bs.Stop()
+			ui.bs = nil
 		}
 	}
-	jsonSuccess(w, EnabledPayload{Enabled: ui.bs.IsRunning()})
+
+	jsonSuccess(w, EnabledPayload{Enabled: ui.IsBotEnabled()})
 }
 
 func (ui *UIService) healthzHandler(w http.ResponseWriter, r *http.Request) {
