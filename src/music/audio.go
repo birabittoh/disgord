@@ -6,6 +6,7 @@ import (
 	"io"
 	"os/exec"
 	"strconv"
+	"time"
 
 	gl "github.com/birabittoh/disgord/src/globals"
 	"github.com/birabittoh/miri"
@@ -21,11 +22,12 @@ type Audio struct {
 	outputChan   chan []byte
 	ffmpegStream io.ReadCloser
 	ffmpegCmd    *exec.Cmd
+	onFinish     func()
 
 	ms *MusicService
 }
 
-func NewAudio(track *miri.SongResult, vc *discordgo.VoiceConnection, ms *MusicService) (a *Audio, err error) {
+func NewAudio(track *miri.SongResult, vc *discordgo.VoiceConnection, ms *MusicService, seekTo time.Duration) (a *Audio, err error) {
 	a = &Audio{
 		playing:    true,
 		Done:       make(chan error),
@@ -48,22 +50,30 @@ func NewAudio(track *miri.SongResult, vc *discordgo.VoiceConnection, ms *MusicSe
 	a.opusEncoder.SetBitrate(bitrate * 1000)
 	a.opusEncoder.SetApplication(gopus.Voip)
 
-	a.downloader(track)
+	a.downloader(track, seekTo)
 	go a.reader()
 	go a.encoder()
 	go a.play_sound(vc)
 	return
 }
 
-func (a *Audio) downloader(track *miri.SongResult) {
-	a.ffmpegCmd = exec.Command(
-		"ffmpeg",
+func (a *Audio) downloader(track *miri.SongResult, seekTo time.Duration) {
+	seekToSeconds := int(seekTo.Seconds())
+	if seekToSeconds < 0 {
+		seekToSeconds = 0
+	}
+
+	ffmpegArgs := []string{
+		"-ss", strconv.Itoa(seekToSeconds),
 		"-i", "pipe:0",
 		"-f", "s16le",
 		"-acodec", "pcm_s16le",
 		"-ar", strconv.Itoa(gl.AudioFrameRate),
 		"-ac", strconv.Itoa(gl.AudioChannels),
-		"pipe:1")
+		"pipe:1",
+	}
+
+	a.ffmpegCmd = exec.Command("ffmpeg", ffmpegArgs...)
 	ffmpegStdin, err := a.ffmpegCmd.StdinPipe()
 	if err != nil {
 		a.ms.Logger.Error("Error creating ffmpeg stdin pipe:", err)
@@ -191,7 +201,7 @@ func (a *Audio) Stop() {
 	}
 }
 
-func (a *Audio) Monitor(onFinish func()) {
+func (a *Audio) Monitor() {
 	go func() {
 		if err := <-a.Done; err != nil {
 			a.ms.Logger.Errorf("Playback error: %v", err)
@@ -206,8 +216,8 @@ func (a *Audio) Monitor(onFinish func()) {
 			a.ffmpegCmd.Wait() // Wait for the process to finish
 		}
 
-		if onFinish != nil {
-			onFinish()
+		if a.onFinish != nil {
+			a.onFinish()
 		}
 	}()
 }

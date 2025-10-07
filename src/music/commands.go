@@ -3,6 +3,7 @@ package music
 import (
 	"fmt"
 	"strconv"
+	"time"
 
 	gl "github.com/birabittoh/disgord/src/globals"
 	"github.com/birabittoh/miri"
@@ -225,6 +226,39 @@ func (ms *MusicService) HandleLeave(args string, m *discordgo.MessageCreate) *di
 
 	ms.DeleteQueue(g.ID)
 	return ms.us.EmbedMessage(gl.MsgLeft)
+}
+
+func (ms *MusicService) HandleSeek(args string, m *discordgo.MessageCreate) *discordgo.MessageSend {
+	r, g, vc := ms.us.GetVoiceChannelID(m.Member, m.GuildID, m.Author.ID)
+	if r != "" {
+		return ms.us.EmbedMessage(r)
+	}
+
+	if args == "" {
+		return ms.us.EmbedMessage(gl.MsgNoKeywords)
+	}
+
+	seekTo, err := time.ParseDuration(args)
+	if err != nil || seekTo < 0 {
+		return ms.us.EmbedMessage(gl.MsgInvalidTrackNumber) // MsgInvalidSeekTime
+	}
+
+	q := ms.GetQueue(g.ID)
+	if q == nil {
+		return ms.us.EmbedMessage(gl.MsgNothingIsPlaying)
+	}
+
+	if vc != q.VoiceChannelID() {
+		return ms.us.EmbedMessage(gl.MsgSameVoiceChannel)
+	}
+
+	err = q.Seek(ms, seekTo)
+	if err != nil {
+		ms.Logger.Errorf("could not seek: %v", err)
+		return ms.us.EmbedMessage(gl.MsgError)
+	}
+
+	return ms.us.EmbedMessage(fmt.Sprintf(gl.MsgSkipped)) // MsgSeeked
 }
 
 func (ms *MusicService) HandleChooseTrack(arg string, i *discordgo.InteractionCreate) *discordgo.MessageSend {

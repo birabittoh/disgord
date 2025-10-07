@@ -2,6 +2,7 @@ package music
 
 import (
 	"context"
+	"time"
 
 	"github.com/birabittoh/miri"
 	"github.com/bwmarrin/discordgo"
@@ -42,17 +43,42 @@ func (q *Queue) PlayNext(ms *MusicService, skip bool) (err error) {
 			return nil
 		}
 	}
+
 	if len(q.items) == 0 {
 		ms.DeleteQueue(q.vc.GuildID)
 		return nil
 	}
+
 	q.nowPlaying = &q.items[0]
 	q.items = q.items[1:]
-	q.audioStream, err = NewAudio(q.nowPlaying, q.vc, ms)
+	q.audioStream, err = NewAudio(q.nowPlaying, q.vc, ms, 0)
 	if err != nil {
 		return
 	}
-	q.audioStream.Monitor(func() { q.PlayNext(ms, false) })
+
+	q.audioStream.onFinish = func() { q.PlayNext(ms, false) }
+	q.audioStream.Monitor()
+	return
+}
+
+func (q *Queue) Seek(ms *MusicService, seekTo time.Duration) (err error) {
+	if q.vc == nil || ms.us.Ctx == nil {
+		return
+	}
+
+	if q.audioStream == nil || !q.audioStream.playing {
+		return
+	}
+
+	q.audioStream.onFinish = nil
+	q.audioStream.Stop()
+
+	q.audioStream, err = NewAudio(q.nowPlaying, q.vc, ms, seekTo)
+	if err != nil {
+		return
+	}
+	q.audioStream.onFinish = func() { q.PlayNext(ms, false) }
+	q.audioStream.Monitor()
 	return
 }
 
@@ -62,6 +88,7 @@ func (q *Queue) Stop() {
 		q.audioStream.Stop()
 		q.audioStream = nil // Clear the stale audio stream
 	}
+
 	q.nowPlaying = nil
 	if q.vc != nil && q.ctx != nil {
 		q.vc.Disconnect(q.ctx)

@@ -138,6 +138,7 @@ func (bs *BotService) initHandlers() {
 		"play":   {ShortCode: "p", Handler: bs.MS.HandlePlay, Help: "plays a song", SlashOptions: defaultSearchOptions, Tag: "music"},
 		"search": {ShortCode: "f", Handler: bs.MS.HandleSearch, Help: "searches for a song", SlashOptions: defaultSearchOptions, Tag: "music"},
 		"lyrics": {ShortCode: "l", Handler: bs.MS.HandleLyrics, Help: "shows the lyrics of the current song", Tag: "music"},
+		"seek":   {ShortCode: "se", Handler: bs.MS.HandleSeek, Help: "seeks to a specific position in the current song", SlashOptions: defaultSearchOptions, Tag: "music"},
 		"skip":   {ShortCode: "s", Handler: bs.MS.HandleSkip, Help: "skips the current song", Tag: "music"},
 		"queue":  {ShortCode: "q", Handler: bs.MS.HandleQueue, Help: "shows the current queue", Tag: "music"},
 		"clear":  {ShortCode: "c", Handler: bs.MS.HandleClear, Help: "clears the current queue", Tag: "music"},

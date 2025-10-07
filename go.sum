@@ -1,7 +1,5 @@
-github.com/birabittoh/miri v1.4.9 h1:i3rEuXbk2X15dzTRcIKY95dZmyNWxw/WWS/kyUxU5pw=
-github.com/birabittoh/miri v1.4.9/go.mod h1:sWHr/FTg7hcScTFaSZHpu4V6F1+0dQEph+4U7LzaURU=
-github.com/birabittoh/mylo v0.0.0-20251003081340-7abbda7cc4e4 h1:hr96+oKDKDrQk065k4hv1fmmZJ4qc41bgpJ98APtAqY=
-github.com/birabittoh/mylo v0.0.0-20251003081340-7abbda7cc4e4/go.mod h1:AlsY5goMJZZq0i1Bt5dmuUXhdK1Mri6ob035ONz7ANk=
+github.com/birabittoh/miri v1.4.10 h1:Pj7F9oznw9Xph9nxJvKb6IlPaQxSYepcww//9AKz1xM=
+github.com/birabittoh/miri v1.4.10/go.mod h1:sWHr/FTg7hcScTFaSZHpu4V6F1+0dQEph+4U7LzaURU=
 github.com/birabittoh/mylo v0.0.2 h1:uWHXYQcnaGWH0lFIG2JG32j6AjFjBw45aWMnmfzMdaw=
 github.com/birabittoh/mylo v0.0.2/go.mod h1:AlsY5goMJZZq0i1Bt5dmuUXhdK1Mri6ob035ONz7ANk=
 github.com/google/go-cmp v0.6.0/go.mod h1:17dUlkBOakJ0+DkrSSNjCkIjxS6bF9zb3elmeNGIjoY=
