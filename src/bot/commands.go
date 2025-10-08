@@ -86,7 +86,7 @@ func (bs *BotService) Stop() {
 
 // don't remove the 's' parameter
 func (bs *BotService) messageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
-	if m.Author.ID == bs.US.Session.State.User.ID {
+	if m.Author == nil || m.Author.ID == bs.US.Session.State.User.ID {
 		return
 	}
 
