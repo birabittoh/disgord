@@ -6,14 +6,12 @@ import (
 
 	"github.com/birabittoh/disgord/src/globals"
 	"github.com/birabittoh/miri"
-	"github.com/birabittoh/miri/deezer"
 	"github.com/birabittoh/mylo"
 	"github.com/bwmarrin/discordgo"
 )
 
 type MusicService struct {
-	us           *globals.UtilsService
-	searchClient *miri.Client
+	us *globals.UtilsService
 
 	Logger   *mylo.Logger
 	Queues   map[string]*Queue
@@ -21,23 +19,11 @@ type MusicService struct {
 }
 
 func NewMusicService(us *globals.UtilsService) (*MusicService, error) {
-	dCfg := &deezer.Config{
-		ArlCookie: us.Config.ArlCookie,
-		SecretKey: us.Config.SecretKey,
-		Timeout:   30 * time.Minute, // long timeout for music streaming
-	}
-
-	c, err := miri.New(us.Ctx, dCfg)
-	if err != nil {
-		return nil, err
-	}
-
 	return &MusicService{
-		us:           us,
-		searchClient: c,
-		Logger:       mylo.New(os.Stdout, globals.LoggerMusic, us.Config.LogLevel, globals.LogFlags),
-		Queues:       make(map[string]*Queue),
-		Searches:     make(map[string][]miri.SongResult),
+		us:       us,
+		Logger:   mylo.New(os.Stdout, globals.LoggerMusic, us.Config.LogLevel, globals.LogFlags),
+		Queues:   make(map[string]*Queue),
+		Searches: make(map[string][]miri.SongResult),
 	}, nil
 }
 
@@ -63,7 +49,7 @@ func (ms *MusicService) GetVoiceConnection(vc string, guildID string) (voice *di
 func (ms *MusicService) GetOrCreateQueue(vc *discordgo.VoiceConnection, channelID string) (*Queue, error) {
 	q := ms.GetQueue(vc.GuildID)
 	if q == nil {
-		dCfg, err := deezer.NewConfig(ms.us.Config.ArlCookie, ms.us.Config.SecretKey)
+		dCfg, err := miri.NewConfig(ms.us.Config.ArlCookie, ms.us.Config.SecretKey)
 		if err != nil {
 			return nil, err
 		}

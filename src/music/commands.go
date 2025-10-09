@@ -29,7 +29,7 @@ func (ms *MusicService) PlayToVC(query string, vc string, guildID string) (respo
 	}
 
 	opt := miri.SearchOptions{Limit: 1, Query: query}
-	results, err := q.client.SearchTracks(ms.us.Ctx, opt)
+	results, err := miri.SearchTracks(ms.us.Ctx, opt)
 	if err != nil {
 		ms.Logger.Errorf("could not search track: %v", err)
 		if q.nowPlaying == nil {
@@ -83,7 +83,7 @@ func (ms *MusicService) HandleSearch(args string, m *discordgo.MessageCreate) *d
 		Limit: uint64(ms.us.Config.MaxSearchResults),
 		Query: args,
 	}
-	results, err := ms.searchClient.SearchTracks(ms.us.Ctx, opt)
+	results, err := miri.SearchTracks(ms.us.Ctx, opt)
 	if err != nil {
 		ms.Logger.Errorf("could not search track: %v", err)
 		return ms.us.EmbedMessage(gl.MsgError)

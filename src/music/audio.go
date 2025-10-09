@@ -90,7 +90,7 @@ func (a *Audio) downloader(track *miri.SongResult, seekTo int, guildID string) {
 		}
 
 		// Stream the track into ffmpeg's stdin
-		err := q.client.StreamTrackByID(a.ms.us.Ctx, strconv.Itoa(track.ID), ffmpegStdin)
+		err := q.client.StreamTrackByID(a.ms.us.Ctx, track.ID, ffmpegStdin)
 		if err != nil {
 			a.ms.Logger.Error("Error streaming track to ffmpeg stdin:", err)
 		}
