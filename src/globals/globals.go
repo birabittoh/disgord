@@ -38,10 +38,12 @@ const (
 	MsgResumed            = "Resumed."
 	MsgSkipped            = "Skipped."
 	MsgCleared            = "Cleared."
+	MsgSeeked             = "Seeked to %s."
 	MsgLeft               = "Left."
 	MsgNoLyrics           = "No lyrics found for this song."
 	MsgInvalidTrackNumber = "Invalid track selection."
 	MsgCantFindSearch     = "Could not find your previous search, please try again."
+	MsgInvalidSeekTime    = "Please provide a valid seek time (e.g., 1m30s or 3m)."
 
 	DiscordEmbedDescriptionLimit   = 4096
 	DefaultSearchOptionName        = "input"

@@ -12,32 +12,32 @@ import (
 )
 
 type MusicService struct {
-	us *globals.UtilsService
+	us           *globals.UtilsService
+	searchClient *miri.Client
 
-	Client   *miri.Client
 	Logger   *mylo.Logger
 	Queues   map[string]*Queue
 	Searches map[string][]miri.SongResult
 }
 
 func NewMusicService(us *globals.UtilsService) (*MusicService, error) {
-	dCfg, err := deezer.NewConfig(us.Config.ArlCookie, us.Config.SecretKey)
-	if err != nil {
-		return nil, err
+	dCfg := &deezer.Config{
+		ArlCookie: us.Config.ArlCookie,
+		SecretKey: us.Config.SecretKey,
+		Timeout:   30 * time.Minute, // long timeout for music streaming
 	}
 
-	dCfg.Timeout = 30 * time.Minute // long timeout for music streaming
-	client, err := miri.New(us.Ctx, dCfg)
+	c, err := miri.New(us.Ctx, dCfg)
 	if err != nil {
 		return nil, err
 	}
 
 	return &MusicService{
-		us:       us,
-		Client:   client,
-		Logger:   mylo.New(os.Stdout, globals.LoggerMusic, us.Config.LogLevel, globals.LogFlags),
-		Queues:   make(map[string]*Queue),
-		Searches: make(map[string][]miri.SongResult),
+		us:           us,
+		searchClient: c,
+		Logger:       mylo.New(os.Stdout, globals.LoggerMusic, us.Config.LogLevel, globals.LogFlags),
+		Queues:       make(map[string]*Queue),
+		Searches:     make(map[string][]miri.SongResult),
 	}, nil
 }
 
@@ -60,14 +60,24 @@ func (ms *MusicService) GetVoiceConnection(vc string, guildID string) (voice *di
 	return voice, nil
 }
 
-func (ms *MusicService) GetOrCreateQueue(vc *discordgo.VoiceConnection, channelID string) *Queue {
+func (ms *MusicService) GetOrCreateQueue(vc *discordgo.VoiceConnection, channelID string) (*Queue, error) {
 	q := ms.GetQueue(vc.GuildID)
 	if q == nil {
+		dCfg, err := deezer.NewConfig(ms.us.Config.ArlCookie, ms.us.Config.SecretKey)
+		if err != nil {
+			return nil, err
+		}
+
+		dCfg.Timeout = 30 * time.Minute // long timeout for music streaming
 		q = &Queue{
 			vc:        vc,
 			channelID: channelID,
-			client:    ms.Client,
 			ctx:       ms.us.Ctx,
+		}
+
+		q.client, err = miri.New(ms.us.Ctx, dCfg)
+		if err != nil {
+			return nil, err
 		}
 		ms.Queues[vc.GuildID] = q
 	} else {
@@ -76,7 +86,7 @@ func (ms *MusicService) GetOrCreateQueue(vc *discordgo.VoiceConnection, channelI
 		q.channelID = channelID
 	}
 
-	return q
+	return q, nil
 }
 
 func (ms *MusicService) GetQueue(guildID string) *Queue {

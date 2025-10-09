@@ -6,7 +6,6 @@ import (
 	"io"
 	"os/exec"
 	"strconv"
-	"time"
 
 	gl "github.com/birabittoh/disgord/src/globals"
 	"github.com/birabittoh/miri"
@@ -27,7 +26,7 @@ type Audio struct {
 	ms *MusicService
 }
 
-func NewAudio(track *miri.SongResult, vc *discordgo.VoiceConnection, ms *MusicService, seekTo time.Duration) (a *Audio, err error) {
+func NewAudio(track *miri.SongResult, vc *discordgo.VoiceConnection, ms *MusicService, seekTo int) (a *Audio, err error) {
 	a = &Audio{
 		playing:    true,
 		Done:       make(chan error),
@@ -50,21 +49,16 @@ func NewAudio(track *miri.SongResult, vc *discordgo.VoiceConnection, ms *MusicSe
 	a.opusEncoder.SetBitrate(bitrate * 1000)
 	a.opusEncoder.SetApplication(gopus.Voip)
 
-	a.downloader(track, seekTo)
+	a.downloader(track, seekTo, vc.GuildID)
 	go a.reader()
 	go a.encoder()
 	go a.play_sound(vc)
 	return
 }
 
-func (a *Audio) downloader(track *miri.SongResult, seekTo time.Duration) {
-	seekToSeconds := int(seekTo.Seconds())
-	if seekToSeconds < 0 {
-		seekToSeconds = 0
-	}
-
+func (a *Audio) downloader(track *miri.SongResult, seekTo int, guildID string) {
 	ffmpegArgs := []string{
-		"-ss", strconv.Itoa(seekToSeconds),
+		"-ss", strconv.Itoa(seekTo),
 		"-i", "pipe:0",
 		"-f", "s16le",
 		"-acodec", "pcm_s16le",
@@ -88,7 +82,18 @@ func (a *Audio) downloader(track *miri.SongResult, seekTo time.Duration) {
 
 	// Stream track directly into ffmpeg's Stdin
 	go func() {
-		a.ms.Client.StreamTrackByID(a.ms.us.Ctx, strconv.Itoa(track.ID), ffmpegStdin)
+		q := a.ms.GetQueue(guildID)
+		if q == nil {
+			a.ms.Logger.Error("Queue not found for guild:", guildID)
+			ffmpegStdin.Close()
+			return
+		}
+
+		// Stream the track into ffmpeg's stdin
+		err := q.client.StreamTrackByID(a.ms.us.Ctx, strconv.Itoa(track.ID), ffmpegStdin)
+		if err != nil {
+			a.ms.Logger.Error("Error streaming track to ffmpeg stdin:", err)
+		}
 		ffmpegStdin.Close()
 	}()
 }

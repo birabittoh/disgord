@@ -20,10 +20,16 @@ func (ms *MusicService) PlayToVC(query string, vc string, guildID string) (respo
 		return
 	}
 
-	q := ms.GetOrCreateQueue(voice, vc)
+	q, err := ms.GetOrCreateQueue(voice, vc)
+	if err != nil {
+		ms.Logger.Errorf("could not create queue: %v", err)
+		voice.Disconnect(ms.us.Ctx)
+		response = gl.MsgError
+		return
+	}
 
 	opt := miri.SearchOptions{Limit: 1, Query: query}
-	results, err := ms.Client.SearchTracks(ms.us.Ctx, opt)
+	results, err := q.client.SearchTracks(ms.us.Ctx, opt)
 	if err != nil {
 		ms.Logger.Errorf("could not search track: %v", err)
 		if q.nowPlaying == nil {
@@ -77,7 +83,7 @@ func (ms *MusicService) HandleSearch(args string, m *discordgo.MessageCreate) *d
 		Limit: uint64(ms.us.Config.MaxSearchResults),
 		Query: args,
 	}
-	results, err := ms.Client.SearchTracks(ms.us.Ctx, opt)
+	results, err := ms.searchClient.SearchTracks(ms.us.Ctx, opt)
 	if err != nil {
 		ms.Logger.Errorf("could not search track: %v", err)
 		return ms.us.EmbedMessage(gl.MsgError)
@@ -133,7 +139,7 @@ func (ms *MusicService) HandleLyrics(args string, m *discordgo.MessageCreate) *d
 		return ms.us.EmbedMessage(gl.MsgNothingIsPlaying)
 	}
 
-	lyrics, err := q.nowPlaying.Lyrics()
+	lyrics, err := q.nowPlaying.Lyrics(ms.us.Ctx)
 	if err != nil || lyrics == "" {
 		ms.Logger.Errorf("could not fetch lyrics: %v", err)
 		return ms.us.EmbedMessage(gl.MsgNoLyrics)
@@ -239,8 +245,8 @@ func (ms *MusicService) HandleSeek(args string, m *discordgo.MessageCreate) *dis
 	}
 
 	seekTo, err := time.ParseDuration(args)
-	if err != nil || seekTo < 0 {
-		return ms.us.EmbedMessage(gl.MsgInvalidTrackNumber) // MsgInvalidSeekTime
+	if err != nil {
+		return ms.us.EmbedMessage(gl.MsgInvalidSeekTime)
 	}
 
 	q := ms.GetQueue(g.ID)
@@ -252,13 +258,23 @@ func (ms *MusicService) HandleSeek(args string, m *discordgo.MessageCreate) *dis
 		return ms.us.EmbedMessage(gl.MsgSameVoiceChannel)
 	}
 
-	err = q.Seek(ms, seekTo)
+	np := q.nowPlaying
+	if np == nil {
+		return ms.us.EmbedMessage(gl.MsgNothingIsPlaying)
+	}
+
+	seekToSeconds := int(seekTo.Seconds())
+	if seekToSeconds < 0 || seekToSeconds >= np.Duration {
+		return ms.us.EmbedMessage(gl.MsgInvalidSeekTime)
+	}
+
+	err = q.Seek(ms, seekToSeconds)
 	if err != nil {
 		ms.Logger.Errorf("could not seek: %v", err)
 		return ms.us.EmbedMessage(gl.MsgError)
 	}
 
-	return ms.us.EmbedMessage(fmt.Sprintf(gl.MsgSkipped)) // MsgSeeked
+	return ms.us.EmbedMessage(fmt.Sprintf(gl.MsgSeeked, seekTo.String()))
 }
 
 func (ms *MusicService) HandleChooseTrack(arg string, i *discordgo.InteractionCreate) *discordgo.MessageSend {
@@ -291,7 +307,13 @@ func (ms *MusicService) HandleChooseTrack(arg string, i *discordgo.InteractionCr
 		return ms.us.EmbedMessage(err.Error())
 	}
 
-	q := ms.GetOrCreateQueue(voice, vc)
+	q, err := ms.GetOrCreateQueue(voice, vc)
+	if err != nil {
+		ms.Logger.Errorf("could not create queue: %v", err)
+		voice.Disconnect(ms.us.Ctx)
+		return ms.us.EmbedMessage(gl.MsgError)
+	}
+
 	q.AddTrack(ms, track)
 	delete(ms.Searches, key)
 	defer ms.us.Session.ChannelMessageDelete(i.ChannelID, i.Message.ID)

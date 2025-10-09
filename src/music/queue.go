@@ -2,7 +2,6 @@ package music
 
 import (
 	"context"
-	"time"
 
 	"github.com/birabittoh/miri"
 	"github.com/bwmarrin/discordgo"
@@ -61,7 +60,7 @@ func (q *Queue) PlayNext(ms *MusicService, skip bool) (err error) {
 	return
 }
 
-func (q *Queue) Seek(ms *MusicService, seekTo time.Duration) (err error) {
+func (q *Queue) Seek(ms *MusicService, seekTo int) (err error) {
 	if q.vc == nil || ms.us.Ctx == nil {
 		return
 	}
