@@ -60,7 +60,7 @@ func (bs *BotService) registerSlashCommands() error {
 			if err != nil {
 				return err
 			}
-			bs.logger.Infof("Deleted obsolete command: %s", cmd.Name)
+			bs.logger.Info("Deleted obsolete command", "command", cmd.Name)
 		}
 	}
 
@@ -78,7 +78,7 @@ func (bs *BotService) registerSlashCommands() error {
 			if err != nil {
 				return err
 			}
-			bs.logger.Infof("Created new command: %s", created.Name)
+			bs.logger.Info("Created new command", "command", created.Name)
 		} else {
 			// Compare and update if changed
 			changed := found.Description != desiredCmd.Description || len(found.Options) != len(desiredCmd.Options)
@@ -96,7 +96,7 @@ func (bs *BotService) registerSlashCommands() error {
 				if err != nil {
 					return err
 				}
-				bs.logger.Infof("Updated command: %s (ID: %s)", updated.Name, updated.ID)
+				bs.logger.Info("Updated command", "command", updated.Name, "id", updated.ID)
 			}
 		}
 	}
@@ -158,7 +158,7 @@ func (bs *BotService) slashHandler(s *discordgo.Session, i *discordgo.Interactio
 		s.InteractionRespond(i.Interaction, response)
 
 	default:
-		bs.logger.Warnf("Unhandled interaction type: %d", i.Type)
+		bs.logger.Warn("Unhandled interaction type", "type", i.Type)
 		return
 	}
 }

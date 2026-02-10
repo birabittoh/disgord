@@ -4,9 +4,10 @@ go 1.25.1
 
 require (
 	github.com/birabittoh/miri v1.5.2
-	github.com/birabittoh/mylo v0.0.2
 	github.com/bwmarrin/discordgo v0.29.0
+	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/joho/godotenv v1.5.1
+	github.com/lmittmann/tint v1.1.3
 	github.com/pion/opus v0.0.0-20260122090349-7342caad2cf7
 )
 

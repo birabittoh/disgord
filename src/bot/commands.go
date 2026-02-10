@@ -3,15 +3,17 @@ package bot
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"slices"
+	"time"
 
 	"github.com/birabittoh/disgord/src/config"
 	gl "github.com/birabittoh/disgord/src/globals"
 	"github.com/birabittoh/disgord/src/music"
 	"github.com/birabittoh/disgord/src/shoot"
-	"github.com/birabittoh/mylo"
 	"github.com/bwmarrin/discordgo"
+	"github.com/lmittmann/tint"
 )
 
 type BotService struct {
@@ -19,7 +21,7 @@ type BotService struct {
 	MS *music.MusicService
 	SS *shoot.ShootService
 
-	logger          *mylo.Logger
+	logger          *slog.Logger
 	interactionsMap map[string]gl.BotInteraction
 	handlersMap     map[string]gl.BotCommand
 	aliasMap        map[string]string
@@ -31,7 +33,10 @@ func NewBotService(cfg *config.Config) (bs *BotService, err error) {
 		US:       gl.NewUtilsService(cfg),
 		aliasMap: make(map[string]string),
 	}
-	bs.logger = mylo.New(os.Stdout, gl.LoggerMain, bs.US.Config.LogLevel, gl.LogFlags)
+	bs.logger = slog.New(tint.NewHandler(os.Stdout, &tint.Options{
+		Level:      bs.US.Config.LogLevel,
+		TimeFormat: time.TimeOnly,
+	})).With("service", gl.LoggerMain)
 
 	bs.US.Session, err = discordgo.New("Bot " + bs.US.Config.BotToken)
 	if err != nil {
@@ -69,17 +74,17 @@ func (bs *BotService) Start() error {
 	go func() {
 		err := bs.registerSlashCommands()
 		if err != nil {
-			bs.logger.Errorf("could not register slash commands: %s", err)
+			bs.logger.Error("could not register slash commands", "error", err)
 		}
 	}()
 
-	bs.logger.Info("Bot started... Commit " + gl.CommitID)
+	bs.logger.Info("Bot started", "commit", gl.CommitID)
 	return nil
 }
 
 func (bs *BotService) Stop() {
 	if err := bs.US.Session.Close(); err != nil {
-		bs.logger.Errorf("could not close session: %s", err)
+		bs.logger.Error("could not close session", "error", err)
 	}
 	bs.logger.Info("Bot stopped")
 }
@@ -90,11 +95,11 @@ func (bs *BotService) messageHandler(s *discordgo.Session, m *discordgo.MessageC
 		return
 	}
 
-	bs.logger.Debug("Got a message: " + m.Content)
+	bs.logger.Debug("Got a message", "content", m.Content)
 
 	response, ok, err := bs.handleCommand(m)
 	if err != nil {
-		bs.logger.Errorf("could not handle command: %s", err)
+		bs.logger.Error("could not handle command", "error", err)
 		return
 	}
 	if !ok {
@@ -103,7 +108,7 @@ func (bs *BotService) messageHandler(s *discordgo.Session, m *discordgo.MessageC
 	if response != nil {
 		_, err := bs.US.Session.ChannelMessageSendComplex(m.ChannelID, response)
 		if err != nil {
-			bs.logger.Errorf("could not send message: %s", err)
+			bs.logger.Error("could not send message", "error", err)
 		}
 	}
 }
@@ -119,7 +124,7 @@ func (bs *BotService) readyHandler(s *discordgo.Session, r *discordgo.Ready) {
 			},
 		},
 	})
-	bs.logger.Infof("Logged in as %s", r.User.String())
+	bs.logger.Info("Logged in", "user", r.User.String())
 }
 
 func (bs *BotService) initHandlers() {

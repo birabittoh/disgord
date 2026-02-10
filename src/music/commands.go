@@ -24,7 +24,7 @@ func (ms *MusicService) PlayToVC(query string, vc string, guildID string) (respo
 
 	q, err := ms.GetOrCreateQueue(voice, vc)
 	if err != nil {
-		ms.Logger.Errorf("could not create queue: %v", err)
+		ms.Logger.Error("could not create queue", "error", err)
 		voice.Disconnect(ms.us.Ctx)
 		response = gl.MsgError
 		return
@@ -37,7 +37,7 @@ func (ms *MusicService) PlayToVC(query string, vc string, guildID string) (respo
 	}
 	results, err := miri.SearchTracks(ms.us.Ctx, opt)
 	if err != nil {
-		ms.Logger.Errorf("could not search track: %v", err)
+		ms.Logger.Error("could not search track", "error", err)
 		if q.nowPlaying == nil {
 			voice.Disconnect(ms.us.Ctx)
 		}
@@ -94,7 +94,7 @@ func (ms *MusicService) HandleSearch(args string, m *discordgo.MessageCreate) *d
 	}
 	results, err := miri.SearchTracks(ms.us.Ctx, opt)
 	if err != nil {
-		ms.Logger.Errorf("could not search track: %v", err)
+		ms.Logger.Error("could not search track", "error", err)
 		return ms.us.EmbedMessage(gl.MsgError)
 	}
 
@@ -125,7 +125,7 @@ func (ms *MusicService) HandleSearch(args string, m *discordgo.MessageCreate) *d
 	})
 
 	key := getPendingSearchKey(m.ChannelID, m.Author.ID)
-	ms.Searches[key] = results[:maxResults]
+	ms.Searches.Add(key, results[:maxResults])
 
 	// Split buttons into rows of max 5
 	var components []discordgo.MessageComponent
@@ -150,7 +150,7 @@ func (ms *MusicService) HandleLyrics(args string, m *discordgo.MessageCreate) *d
 
 	lyrics, err := q.nowPlaying.Lyrics(ms.us.Ctx)
 	if err != nil || lyrics == "" {
-		ms.Logger.Errorf("could not fetch lyrics: %v", err)
+		ms.Logger.Error("could not fetch lyrics", "error", err)
 		return ms.us.EmbedMessage(gl.MsgNoLyrics)
 	}
 
@@ -279,7 +279,7 @@ func (ms *MusicService) HandleSeek(args string, m *discordgo.MessageCreate) *dis
 
 	err = q.Seek(ms, seekToSeconds)
 	if err != nil {
-		ms.Logger.Errorf("could not seek: %v", err)
+		ms.Logger.Error("could not seek", "error", err)
 		return ms.us.EmbedMessage(gl.MsgError)
 	}
 
@@ -293,14 +293,14 @@ func (ms *MusicService) HandleChooseTrack(arg string, i *discordgo.InteractionCr
 	}
 
 	key := getPendingSearchKey(i.ChannelID, i.Member.User.ID)
-	results, found := ms.Searches[key]
+	results, found := ms.Searches.Get(key)
 	if !found || trackIdx > len(results) {
 		return ms.us.EmbedMessage(gl.MsgCantFindSearch)
 	}
 
 	if trackIdx == 0 {
 		// Cancel selection silently
-		delete(ms.Searches, key)
+		ms.Searches.Remove(key)
 		ms.us.Session.ChannelMessageDelete(i.ChannelID, i.Message.ID)
 		return nil
 	}
@@ -318,13 +318,13 @@ func (ms *MusicService) HandleChooseTrack(arg string, i *discordgo.InteractionCr
 
 	q, err := ms.GetOrCreateQueue(voice, vc)
 	if err != nil {
-		ms.Logger.Errorf("could not create queue: %v", err)
+		ms.Logger.Error("could not create queue", "error", err)
 		voice.Disconnect(ms.us.Ctx)
 		return ms.us.EmbedMessage(gl.MsgError)
 	}
 
 	q.AddTrack(ms, track)
-	delete(ms.Searches, key)
+	ms.Searches.Remove(key)
 	defer ms.us.Session.ChannelMessageDelete(i.ChannelID, i.Message.ID)
 
 	return ms.us.EmbedTrackMessage(track)

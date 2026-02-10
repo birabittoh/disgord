@@ -3,7 +3,6 @@ package globals
 import (
 	"os"
 
-	"github.com/birabittoh/mylo"
 	"github.com/bwmarrin/discordgo"
 )
 
@@ -50,7 +49,6 @@ const (
 	DefaultSearchOptionDescription = "command arguments"
 	DiscordPermissions             = 17825792
 
-	LogFlags    = mylo.DefaultFlags
 	LoggerMain  = "main "
 	LoggerMusic = "music"
 	LoggerShoot = "shoot"

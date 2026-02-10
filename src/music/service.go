@@ -1,29 +1,39 @@
 package music
 
 import (
+	"log/slog"
 	"os"
 	"time"
 
 	"github.com/birabittoh/disgord/src/globals"
 	"github.com/birabittoh/miri"
-	"github.com/birabittoh/mylo"
 	"github.com/bwmarrin/discordgo"
+	lru "github.com/hashicorp/golang-lru/v2"
+	"github.com/lmittmann/tint"
 )
 
 type MusicService struct {
 	us *globals.UtilsService
 
-	Logger   *mylo.Logger
+	Logger   *slog.Logger
 	Queues   map[string]*Queue
-	Searches map[string][]miri.SongResult
+	Searches *lru.Cache[string, []miri.SongResult]
 }
 
 func NewMusicService(us *globals.UtilsService) (*MusicService, error) {
+	cache, err := lru.New[string, []miri.SongResult](128)
+	if err != nil {
+		return nil, err
+	}
+
 	return &MusicService{
-		us:       us,
-		Logger:   mylo.New(os.Stdout, globals.LoggerMusic, us.Config.LogLevel, globals.LogFlags),
+		us: us,
+		Logger: slog.New(tint.NewHandler(os.Stdout, &tint.Options{
+			Level:      us.Config.LogLevel,
+			TimeFormat: time.TimeOnly,
+		})).With("service", globals.LoggerMusic),
 		Queues:   make(map[string]*Queue),
-		Searches: make(map[string][]miri.SongResult),
+		Searches: cache,
 	}, nil
 }
 
@@ -39,7 +49,7 @@ func (ms *MusicService) GetVoiceConnection(vc string, guildID string) (voice *di
 	if !alreadyConnected {
 		voice, err = ms.us.Session.ChannelVoiceJoin(ms.us.Ctx, guildID, vc, false, true)
 		if err != nil {
-			ms.Logger.Errorf("could not join voice channel: %v", err)
+			ms.Logger.Error("could not join voice channel", "error", err)
 			return nil, err
 		}
 	}
@@ -94,7 +104,7 @@ func (ms *MusicService) DeleteQueue(guildID string) {
 		return
 	}
 
-	ms.Logger.Debugf("Deleting queue for guild %s", guildID)
+	ms.Logger.Debug("Deleting queue for guild", "guildID", guildID)
 
 	q.Stop()
 	delete(ms.Queues, guildID)
@@ -130,7 +140,7 @@ func (ms *MusicService) HandleBotVSU(s *discordgo.Session, vsu *discordgo.VoiceS
 	}
 
 	if vsu.ChannelID == "" && vsu.BeforeUpdate.ChannelID == queue.VoiceChannelID() {
-		ms.Logger.Println("Bot disconnected from voice channel, stopping audio playback.")
+		ms.Logger.Info("Bot disconnected from voice channel, stopping audio playback.")
 		// DeleteQueue will be called in defer
 	}
 }

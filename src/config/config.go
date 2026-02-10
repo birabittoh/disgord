@@ -2,17 +2,16 @@ package config
 
 import (
 	"errors"
+	"log/slog"
 	"os"
 	"strconv"
-
-	"github.com/birabittoh/mylo"
 )
 
 type Config struct {
 	// General settings
 	ApplicationID string // required
 	BotToken      string // required
-	LogLevel      mylo.Level
+	LogLevel      slog.Level
 	Prefix        string
 	Color         int
 	UIAddress     string
@@ -81,7 +80,7 @@ func New() (*Config, error) {
 	c := &Config{
 		ApplicationID: requireEnv("APPLICATION_ID"),
 		BotToken:      requireEnv("BOT_TOKEN"),
-		LogLevel:      mylo.INFO,
+		LogLevel:      slog.LevelInfo,
 		Prefix:        getEnv("PREFIX", "$"),
 		Color:         int(color),
 		UIAddress:     getEnv("UI_ADDRESS", ":8080"),
@@ -102,7 +101,7 @@ func New() (*Config, error) {
 	}
 
 	if getEnvBool("DEBUG", false) {
-		c.LogLevel = mylo.DEBUG
+		c.LogLevel = slog.LevelDebug
 	}
 
 	return c, c.Validate()

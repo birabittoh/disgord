@@ -58,13 +58,13 @@ func (a *Audio) downloader(track *miri.SongResult, seekTo int, guildID string, b
 	a.ffmpegCmd = exec.Command("ffmpeg", ffmpegArgs...)
 	ffmpegStdin, err := a.ffmpegCmd.StdinPipe()
 	if err != nil {
-		a.ms.Logger.Error("Error creating ffmpeg stdin pipe:", err)
+		a.ms.Logger.Error("Error creating ffmpeg stdin pipe", "error", err)
 		return
 	}
 	a.ffmpegStream, _ = a.ffmpegCmd.StdoutPipe()
 
 	if err := a.ffmpegCmd.Start(); err != nil {
-		a.ms.Logger.Error("Error starting ffmpeg command:", err)
+		a.ms.Logger.Error("Error starting ffmpeg command", "error", err)
 		return
 	}
 
@@ -72,7 +72,7 @@ func (a *Audio) downloader(track *miri.SongResult, seekTo int, guildID string, b
 	go func() {
 		q := a.ms.GetQueue(guildID)
 		if q == nil {
-			a.ms.Logger.Error("Queue not found for guild:", guildID)
+			a.ms.Logger.Error("Queue not found for guild", "guildID", guildID)
 			ffmpegStdin.Close()
 			return
 		}
@@ -80,7 +80,7 @@ func (a *Audio) downloader(track *miri.SongResult, seekTo int, guildID string, b
 		// Stream the track into ffmpeg's stdin
 		err := q.client.StreamTrackByID(a.ms.us.Ctx, track.ID, ffmpegStdin)
 		if err != nil {
-			a.ms.Logger.Error("Error streaming track to ffmpeg stdin:", err)
+			a.ms.Logger.Error("Error streaming track to ffmpeg stdin", "error", err)
 		}
 		ffmpegStdin.Close()
 	}()
@@ -93,7 +93,7 @@ func (a *Audio) reader() {
 
 	ogg, _, err := oggreader.NewWith(a.ffmpegStream)
 	if err != nil {
-		a.ms.Logger.Error("Error creating ogg reader:", err)
+		a.ms.Logger.Error("Error creating ogg reader", "error", err)
 		return
 	}
 
@@ -106,7 +106,7 @@ func (a *Audio) reader() {
 		}
 
 		if err != nil {
-			a.ms.Logger.Error("error reading from ogg stream,", err)
+			a.ms.Logger.Error("error reading from ogg stream", "error", err)
 			return
 		}
 
@@ -131,7 +131,7 @@ func (a *Audio) play_sound(vc *discordgo.VoiceConnection) (err error) {
 	a.playing = true
 	defer func() {
 		if r := recover(); r != nil {
-			a.ms.Logger.Error("Recovered from panic in play_sound:", r)
+			a.ms.Logger.Error("Recovered from panic in play_sound", "recover", r)
 			err = nil
 		}
 		a.Done <- err
@@ -148,7 +148,7 @@ func (a *Audio) play_sound(vc *discordgo.VoiceConnection) (err error) {
 			func() {
 				defer func() {
 					if r := recover(); r != nil {
-						a.ms.Logger.Println("OpusSend channel closed, stopping playback")
+						a.ms.Logger.Info("OpusSend channel closed, stopping playback")
 						a.playing = false
 					}
 				}()
@@ -178,7 +178,7 @@ func (a *Audio) Stop() {
 func (a *Audio) Monitor() {
 	go func() {
 		if err := <-a.Done; err != nil {
-			a.ms.Logger.Errorf("Playback error: %v", err)
+			a.ms.Logger.Error("Playback error", "error", err)
 		}
 
 		// Ensure cleanup happens even after normal playback
