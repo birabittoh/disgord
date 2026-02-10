@@ -528,7 +528,11 @@
             if (user && user.avatar) {
                 return `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=64`;
             }
-            const discrim = (user && user.discriminator && user.discriminator !== '0') ? (parseInt(user.discriminator) % 5) : (user ? (parseInt(user.id) >> 22) % 6 : 0);
+            if (!user || !user.id) return `https://cdn.discordapp.com/embed/avatars/0.png?size=64`;
+
+            const discrim = (user.discriminator && user.discriminator !== '0')
+                ? (parseInt(user.discriminator) % 5)
+                : Number((BigInt(user.id) >> 22n) % 6n);
             return `https://cdn.discordapp.com/embed/avatars/${discrim}.png?size=64`;
         }
 
@@ -578,8 +582,8 @@
             return voiceStates
                 .filter(vs => vs.channel_id === channelId)
                 .map(vs => {
-                    const member = members.find(m => m.user && m.user.id === vs.user_id);
-                    if (member) return member.user;
+                    const member = members.find(m => m.user && m.user.id === vs.user_id) || vs.member;
+                    if (member && member.user) return member.user;
                     return { id: vs.user_id, username: 'Unknown', global_name: 'Unknown' };
                 });
         }
