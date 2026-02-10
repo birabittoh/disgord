@@ -7,7 +7,7 @@ require (
 	github.com/birabittoh/mylo v0.0.2
 	github.com/bwmarrin/discordgo v0.29.0
 	github.com/joho/godotenv v1.5.1
-	layeh.com/gopus v0.0.0-20210501142526-1ee02d434e32
+	github.com/pion/opus v0.0.0-20260122090349-7342caad2cf7
 )
 
 require (

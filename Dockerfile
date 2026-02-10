@@ -2,8 +2,6 @@
 
 FROM golang:1.25-alpine AS builder
 
-RUN apk add --no-cache build-base
-
 WORKDIR /build
 
 # Download Git submodules
@@ -21,6 +19,7 @@ COPY *.go ./
 COPY src ./src
 
 # Build
+ENV CGO_ENABLED=0
 RUN commit_hash=$(cat commitID | cut -c1-7) && \
     go build -ldflags "-X github.com/birabittoh/disgord/src/globals.CommitID=$commit_hash" -o /dist/disgord
 

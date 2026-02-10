@@ -1,8 +1,7 @@
 package music
 
 import (
-	"bufio"
-	"encoding/binary"
+	"bytes"
 	"io"
 	"os/exec"
 	"strconv"
@@ -10,14 +9,12 @@ import (
 	gl "github.com/birabittoh/disgord/src/globals"
 	"github.com/birabittoh/miri"
 	"github.com/bwmarrin/discordgo"
-	"layeh.com/gopus"
+	"github.com/pion/opus/pkg/oggreader"
 )
 
 type Audio struct {
 	playing      bool
 	Done         chan error
-	opusEncoder  *gopus.Encoder
-	encodeChan   chan []int16
 	outputChan   chan []byte
 	ffmpegStream io.ReadCloser
 	ffmpegCmd    *exec.Cmd
@@ -30,15 +27,8 @@ func NewAudio(track *miri.SongResult, vc *discordgo.VoiceConnection, ms *MusicSe
 	a = &Audio{
 		playing:    true,
 		Done:       make(chan error),
-		encodeChan: make(chan []int16, 450),
 		outputChan: make(chan []byte, 450),
 		ms:         ms,
-	}
-
-	a.opusEncoder, err = gopus.NewEncoder(gl.AudioFrameRate, gl.AudioChannels, gopus.Voip)
-	if err != nil {
-		ms.Logger.Error("NewEncoder Error:", err)
-		return
 	}
 
 	bitrate := gl.AudioBitrate
@@ -46,24 +36,22 @@ func NewAudio(track *miri.SongResult, vc *discordgo.VoiceConnection, ms *MusicSe
 		bitrate = 64
 	}
 
-	a.opusEncoder.SetBitrate(bitrate * 1000)
-	a.opusEncoder.SetApplication(gopus.Voip)
-
-	a.downloader(track, seekTo, vc.GuildID)
+	a.downloader(track, seekTo, vc.GuildID, bitrate)
 	go a.reader()
-	go a.encoder()
 	go a.play_sound(vc)
 	return
 }
 
-func (a *Audio) downloader(track *miri.SongResult, seekTo int, guildID string) {
+func (a *Audio) downloader(track *miri.SongResult, seekTo int, guildID string, bitrate int) {
 	ffmpegArgs := []string{
 		"-ss", strconv.Itoa(seekTo),
 		"-i", "pipe:0",
-		"-f", "s16le",
-		"-acodec", "pcm_s16le",
+		"-c:a", "libopus",
+		"-b:a", strconv.Itoa(bitrate) + "k",
 		"-ar", strconv.Itoa(gl.AudioFrameRate),
 		"-ac", strconv.Itoa(gl.AudioChannels),
+		"-frame_duration", "20",
+		"-f", "ogg",
 		"pipe:1",
 	}
 
@@ -99,62 +87,33 @@ func (a *Audio) downloader(track *miri.SongResult, seekTo int, guildID string) {
 }
 
 func (a *Audio) reader() {
-	var err error
-	defer func() {
-		close(a.encodeChan)
-	}()
-
-	stdin := bufio.NewReaderSize(a.ffmpegStream, 16384)
-
-	for {
-		buf := make([]int16, gl.AudioFrameSize*gl.AudioChannels)
-
-		err = binary.Read(stdin, binary.LittleEndian, &buf)
-		if err == io.EOF {
-			err = nil
-			// Okay! There's nothing left, time to quit.
-			return
-		}
-
-		if err == io.ErrUnexpectedEOF {
-			// Well there's just a tiny bit left, lets encode it, then quit.
-			// EncodeChan <- buf
-			err = nil
-			return
-		}
-
-		if err != nil {
-			// Oh no, something went wrong!
-			a.ms.Logger.Error("error reading from stdin,", err)
-			return
-		}
-
-		// write pcm data to the EncodeChan
-		a.encodeChan <- buf
-	}
-}
-
-func (a *Audio) encoder() {
 	defer func() {
 		close(a.outputChan)
 	}()
 
+	ogg, _, err := oggreader.NewWith(a.ffmpegStream)
+	if err != nil {
+		a.ms.Logger.Error("Error creating ogg reader:", err)
+		return
+	}
+
 	for {
-		pcm, ok := <-a.encodeChan
-		if !ok {
-			// if chan closed, exit
+		segments, _, err := ogg.ParseNextPage()
+		if err == io.EOF {
 			return
 		}
 
-		// try encoding pcm frame with Opus
-		opus, err := a.opusEncoder.Encode(pcm, gl.AudioFrameSize, gl.MaxBytes)
 		if err != nil {
-			a.ms.Logger.Error("Encoding Error:", err)
+			a.ms.Logger.Error("error reading from ogg stream,", err)
 			return
 		}
 
-		// write opus data to OutputChan
-		a.outputChan <- opus
+		for _, segment := range segments {
+			if bytes.HasPrefix(segment, []byte("OpusHead")) || bytes.HasPrefix(segment, []byte("OpusTags")) {
+				continue
+			}
+			a.outputChan <- segment
+		}
 	}
 }
 
