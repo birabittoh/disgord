@@ -104,6 +104,7 @@ func (ui *UIService) IsBotEnabled() bool {
 // Helper functions
 func jsonResponse(w http.ResponseWriter, data any, status int) {
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(data)
 }
