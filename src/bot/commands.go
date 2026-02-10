@@ -42,7 +42,7 @@ func NewBotService(cfg *config.Config) (bs *BotService, err error) {
 		return nil, errors.New("could not create bot session: " + err.Error())
 	}
 
-	bs.US.Session.Identify.Intents = discordgo.IntentsGuilds | discordgo.IntentsGuildMessages | discordgo.IntentsGuildVoiceStates | discordgo.IntentsMessageContent
+	bs.US.Session.Identify.Intents = discordgo.IntentsGuilds | discordgo.IntentsGuildMessages | discordgo.IntentsGuildVoiceStates | discordgo.IntentsMessageContent | discordgo.IntentsGuildMembers
 
 	if !bs.US.Config.DisableShoot {
 		bs.SS = shoot.NewShootService(bs.US)
