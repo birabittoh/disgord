@@ -51,6 +51,7 @@ func (a *Audio) downloader(track *miri.SongResult, seekTo int, guildID string, b
 		"-ar", strconv.Itoa(gl.AudioFrameRate),
 		"-ac", strconv.Itoa(gl.AudioChannels),
 		"-frame_duration", "20",
+		"-application", "voip",
 		"-f", "ogg",
 		"pipe:1",
 	}
@@ -97,6 +98,8 @@ func (a *Audio) reader() {
 		return
 	}
 
+	var packet []byte
+	packetCount := 0
 	for {
 		segments, _, err := ogg.ParseNextPage()
 		if err == io.EOF {
@@ -109,10 +112,18 @@ func (a *Audio) reader() {
 		}
 
 		for _, segment := range segments {
-			if bytes.HasPrefix(segment, []byte("OpusHead")) || bytes.HasPrefix(segment, []byte("OpusTags")) {
-				continue
+			packet = append(packet, segment...)
+			if len(segment) < 255 {
+				if packetCount < 2 {
+					packetCount++
+					packet = nil
+					continue
+				}
+				if len(packet) > 0 {
+					a.outputChan <- packet
+					packet = nil
+				}
 			}
-			a.outputChan <- segment
 		}
 	}
 }
