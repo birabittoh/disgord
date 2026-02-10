@@ -10,6 +10,8 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
+const searchOrder = "RATING_DESC"
+
 func getPendingSearchKey(channelID, authorID string) string {
 	return channelID + ":" + authorID
 }
@@ -28,7 +30,11 @@ func (ms *MusicService) PlayToVC(query string, vc string, guildID string) (respo
 		return
 	}
 
-	opt := miri.SearchOptions{Limit: 1, Query: query}
+	opt := miri.SearchOptions{
+		Limit: 1,
+		Query: query,
+		Order: searchOrder,
+	}
 	results, err := miri.SearchTracks(ms.us.Ctx, opt)
 	if err != nil {
 		ms.Logger.Errorf("could not search track: %v", err)
@@ -80,8 +86,11 @@ func (ms *MusicService) HandleSearch(args string, m *discordgo.MessageCreate) *d
 	}
 
 	opt := miri.SearchOptions{
-		Limit: uint64(ms.us.Config.MaxSearchResults),
-		Query: args,
+		Index:  0,
+		Limit:  uint64(ms.us.Config.MaxSearchResults),
+		Order:  searchOrder,
+		Strict: true,
+		Query:  args,
 	}
 	results, err := miri.SearchTracks(ms.us.Ctx, opt)
 	if err != nil {
