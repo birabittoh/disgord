@@ -42,6 +42,8 @@ func NewBotService(cfg *config.Config) (bs *BotService, err error) {
 		return nil, errors.New("could not create bot session: " + err.Error())
 	}
 
+	bs.US.Session.Identify.Intents = discordgo.IntentsGuilds | discordgo.IntentsGuildMessages | discordgo.IntentsGuildVoiceStates | discordgo.IntentsMessageContent | discordgo.IntentsGuildMembers
+
 	if !bs.US.Config.DisableShoot {
 		bs.SS = shoot.NewShootService(bs.US)
 	}
@@ -96,7 +98,7 @@ func (bs *BotService) messageHandler(s *discordgo.Session, m *discordgo.MessageC
 
 	bs.logger.Debug("Got a message", "content", m.Content)
 
-	response, ok, err := bs.handleCommand(m)
+	command, response, ok, err := bs.handleCommand(m)
 	if err != nil {
 		bs.logger.Error("could not handle command", "error", err)
 		return
@@ -105,9 +107,11 @@ func (bs *BotService) messageHandler(s *discordgo.Session, m *discordgo.MessageC
 		return
 	}
 	if response != nil {
-		_, err := bs.US.Session.ChannelMessageSendComplex(m.ChannelID, response)
+		msg, err := bs.US.Session.ChannelMessageSendComplex(m.ChannelID, response)
 		if err != nil {
 			bs.logger.Error("could not send message", "error", err)
+		} else if msg != nil && command == "search" && bs.MS != nil {
+			bs.MS.SetSearchMessageID(m.ChannelID, m.Author.ID, msg.ID)
 		}
 	}
 }
@@ -202,14 +206,19 @@ func (bs *BotService) getCommand(name string) *gl.BotCommand {
 	return &botCommand
 }
 
-func (bs *BotService) handleCommand(m *discordgo.MessageCreate) (response *discordgo.MessageSend, ok bool, err error) {
+func (bs *BotService) handleCommand(m *discordgo.MessageCreate) (command string, response *discordgo.MessageSend, ok bool, err error) {
 	if bs.US.Config.DisablePrefixCommands {
-		return nil, false, nil
+		return "", nil, false, nil
 	}
 
-	command, args, ok := bs.US.ParseUserMessage(m.Content)
+	var args string
+	command, args, ok = bs.US.ParseUserMessage(m.Content)
 	if !ok {
 		return
+	}
+
+	if aliasTo, isAlias := bs.aliasMap[command]; isAlias {
+		command = aliasTo
 	}
 
 	bc := bs.getCommand(command)

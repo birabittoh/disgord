@@ -5,6 +5,11 @@ A simple Discord bot in Go.
 Create your own application in the [Discord Developer Portal](https://discord.com/developers/applications).
 In the "Bot" tab, click on "Add Bot", then generate a new token.
 
+### Privileged Intents
+This bot requires the following **Privileged Gateway Intents** to be enabled in the "Bot" tab of your application:
+- **Server Members Intent**: Needed for the Web UI to correctly display users in voice channels.
+- **Message Content Intent**: Needed for the bot to process prefix commands (e.g., `!play`).
+
 Now, do:
 ```
 cp .env.example .env

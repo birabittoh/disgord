@@ -525,10 +525,10 @@
         let refreshInterval;
 
         function getAvatar(user) {
-            if (user.avatar) {
+            if (user && user.avatar) {
                 return `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=64`;
             }
-            const discrim = parseInt(user.discriminator) % 5;
+            const discrim = (user && user.discriminator && user.discriminator !== '0') ? (parseInt(user.discriminator) % 5) : (user ? (parseInt(user.id) >> 22) % 6 : 0);
             return `https://cdn.discordapp.com/embed/avatars/${discrim}.png?size=64`;
         }
 
@@ -574,13 +574,14 @@
 
         function getUsersInChannel(guild, channelId) {
             const voiceStates = guild.voice_states || [];
+            const members = guild.members || [];
             return voiceStates
                 .filter(vs => vs.channel_id === channelId)
                 .map(vs => {
-                    const member = guild.members.find(m => m.user.id === vs.user_id);
-                    return member ? member.user : null;
-                })
-                .filter(user => user !== null);
+                    const member = members.find(m => m.user && m.user.id === vs.user_id);
+                    if (member) return member.user;
+                    return { id: vs.user_id, username: 'Unknown', global_name: 'Unknown' };
+                });
         }
 
         function selectChannel(guildId, channelId) {

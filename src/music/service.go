@@ -12,16 +12,21 @@ import (
 	"github.com/lmittmann/tint"
 )
 
+type PendingSearch struct {
+	Results   []miri.SongResult
+	MessageID string
+}
+
 type MusicService struct {
 	us *globals.UtilsService
 
 	Logger   *slog.Logger
 	Queues   map[string]*Queue
-	Searches *lru.Cache[string, []miri.SongResult]
+	Searches *lru.Cache[string, *PendingSearch]
 }
 
 func NewMusicService(us *globals.UtilsService) (*MusicService, error) {
-	cache, err := lru.New[string, []miri.SongResult](128)
+	cache, err := lru.New[string, *PendingSearch](128)
 	if err != nil {
 		return nil, err
 	}
@@ -142,5 +147,12 @@ func (ms *MusicService) HandleBotVSU(s *discordgo.Session, vsu *discordgo.VoiceS
 	if vsu.ChannelID == "" && vsu.BeforeUpdate.ChannelID == queue.VoiceChannelID() {
 		ms.Logger.Info("Bot disconnected from voice channel, stopping audio playback.")
 		// DeleteQueue will be called in defer
+	}
+}
+
+func (ms *MusicService) SetSearchMessageID(channelID, authorID, messageID string) {
+	key := getPendingSearchKey(channelID, authorID)
+	if ps, ok := ms.Searches.Get(key); ok {
+		ps.MessageID = messageID
 	}
 }
