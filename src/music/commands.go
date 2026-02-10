@@ -116,7 +116,7 @@ func (ms *MusicService) HandleSearch(args string, m *discordgo.MessageCreate) *d
 	})
 
 	key := getPendingSearchKey(m.ChannelID, m.Author.ID)
-	ms.Searches[key] = results[:maxResults]
+	ms.Searches.Put(key, results[:maxResults])
 
 	// Split buttons into rows of max 5
 	var components []discordgo.MessageComponent
@@ -284,14 +284,14 @@ func (ms *MusicService) HandleChooseTrack(arg string, i *discordgo.InteractionCr
 	}
 
 	key := getPendingSearchKey(i.ChannelID, i.Member.User.ID)
-	results, found := ms.Searches[key]
+	results, found := ms.Searches.Get(key)
 	if !found || trackIdx > len(results) {
 		return ms.us.EmbedMessage(gl.MsgCantFindSearch)
 	}
 
 	if trackIdx == 0 {
 		// Cancel selection silently
-		delete(ms.Searches, key)
+		ms.Searches.Delete(key)
 		ms.us.Session.ChannelMessageDelete(i.ChannelID, i.Message.ID)
 		return nil
 	}
@@ -315,7 +315,7 @@ func (ms *MusicService) HandleChooseTrack(arg string, i *discordgo.InteractionCr
 	}
 
 	q.AddTrack(ms, track)
-	delete(ms.Searches, key)
+	ms.Searches.Delete(key)
 	defer ms.us.Session.ChannelMessageDelete(i.ChannelID, i.Message.ID)
 
 	return ms.us.EmbedTrackMessage(track)

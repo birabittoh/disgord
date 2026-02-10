@@ -6,6 +6,8 @@ import (
 	"io"
 	"os/exec"
 	"strconv"
+	"sync"
+	"sync/atomic"
 
 	gl "github.com/birabittoh/disgord/src/globals"
 	"github.com/birabittoh/miri"
@@ -14,26 +16,29 @@ import (
 )
 
 type Audio struct {
-	playing      bool
+	playing      atomic.Bool
 	Done         chan error
 	opusEncoder  *gopus.Encoder
 	encodeChan   chan []int16
 	outputChan   chan []byte
 	ffmpegStream io.ReadCloser
 	ffmpegCmd    *exec.Cmd
-	onFinish     func()
+
+	mu       sync.Mutex
+	onFinish func()
+	waitOnce sync.Once
 
 	ms *MusicService
 }
 
 func NewAudio(track *miri.SongResult, vc *discordgo.VoiceConnection, ms *MusicService, seekTo int) (a *Audio, err error) {
 	a = &Audio{
-		playing:    true,
-		Done:       make(chan error),
+		Done:       make(chan error, 1), // Buffered to avoid blocking
 		encodeChan: make(chan []int16, 450),
 		outputChan: make(chan []byte, 450),
 		ms:         ms,
 	}
+	a.playing.Store(true)
 
 	a.opusEncoder, err = gopus.NewEncoder(gl.AudioFrameRate, gl.AudioChannels, gopus.Voip)
 	if err != nil {
@@ -159,19 +164,21 @@ func (a *Audio) encoder() {
 }
 
 func (a *Audio) play_sound(vc *discordgo.VoiceConnection) (err error) {
-	a.playing = true
 	defer func() {
 		if r := recover(); r != nil {
 			a.ms.Logger.Error("Recovered from panic in play_sound:", r)
 			err = nil
 		}
-		a.Done <- err
+		select {
+		case a.Done <- err:
+		default:
+		}
 	}()
 
-	for a.playing {
+	for a.playing.Load() {
 		opus, ok := <-a.outputChan
 		if !ok {
-			a.playing = false
+			a.playing.Store(false)
 			break
 		}
 		if vc != nil && vc.OpusSend != nil {
@@ -180,7 +187,7 @@ func (a *Audio) play_sound(vc *discordgo.VoiceConnection) (err error) {
 				defer func() {
 					if r := recover(); r != nil {
 						a.ms.Logger.Println("OpusSend channel closed, stopping playback")
-						a.playing = false
+						a.playing.Store(false)
 					}
 				}()
 				vc.OpusSend <- opus
@@ -192,7 +199,9 @@ func (a *Audio) play_sound(vc *discordgo.VoiceConnection) (err error) {
 }
 
 func (a *Audio) Stop() {
-	a.playing = false
+	if !a.playing.Swap(false) {
+		return
+	}
 
 	// Close the ffmpeg stream
 	if a.ffmpegStream != nil {
@@ -202,13 +211,16 @@ func (a *Audio) Stop() {
 	// Kill the ffmpeg process if it's still running
 	if a.ffmpegCmd != nil && a.ffmpegCmd.Process != nil {
 		a.ffmpegCmd.Process.Kill()
-		a.ffmpegCmd.Wait() // Clean up zombie process
+		a.waitOnce.Do(func() {
+			a.ffmpegCmd.Wait() // Clean up zombie process
+		})
 	}
 }
 
 func (a *Audio) Monitor() {
 	go func() {
-		if err := <-a.Done; err != nil {
+		err := <-a.Done
+		if err != nil {
 			a.ms.Logger.Errorf("Playback error: %v", err)
 		}
 
@@ -218,11 +230,27 @@ func (a *Audio) Monitor() {
 		}
 
 		if a.ffmpegCmd != nil && a.ffmpegCmd.Process != nil {
-			a.ffmpegCmd.Wait() // Wait for the process to finish
+			a.waitOnce.Do(func() {
+				a.ffmpegCmd.Wait() // Wait for the process to finish
+			})
 		}
 
-		if a.onFinish != nil {
-			a.onFinish()
+		a.mu.Lock()
+		onFinish := a.onFinish
+		a.mu.Unlock()
+
+		if onFinish != nil {
+			onFinish()
 		}
 	}()
+}
+
+func (a *Audio) IsPlaying() bool {
+	return a.playing.Load()
+}
+
+func (a *Audio) SetOnFinish(f func()) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.onFinish = f
 }

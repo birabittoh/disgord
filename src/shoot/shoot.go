@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"os"
+	"sync"
 	"time"
 
 	gl "github.com/birabittoh/disgord/src/globals"
@@ -15,10 +16,11 @@ type ShootService struct {
 	us *gl.UtilsService
 
 	logger    *mylo.Logger
-	magazines map[string]*Magazine
+	magazines *gl.LRUCache[string, *Magazine]
 }
 
 type Magazine struct {
+	mu   sync.Mutex
 	size uint
 	left uint
 	last time.Time
@@ -35,7 +37,7 @@ func NewShootService(us *gl.UtilsService) *ShootService {
 	return &ShootService{
 		us:        us,
 		logger:    mylo.New(os.Stdout, gl.LoggerShoot, us.Config.LogLevel, gl.LogFlags),
-		magazines: make(map[string]*Magazine),
+		magazines: gl.NewLRUCache[string, *Magazine](1000), // Capacity for 1000 users
 	}
 }
 
@@ -43,7 +45,7 @@ func NewMagazine(size uint) *Magazine {
 	return &Magazine{size: size, left: size, last: time.Now()}
 }
 
-func (m *Magazine) Update() {
+func (m *Magazine) updateLocked() {
 	now := time.Now()
 	if m.last.YearDay() != now.YearDay() || m.last.Year() != now.Year() {
 		m.left = m.size
@@ -51,16 +53,26 @@ func (m *Magazine) Update() {
 }
 
 func (m *Magazine) Left() uint {
-	m.Update()
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.updateLocked()
 	return m.left
 }
 
-func (m Magazine) Size() uint {
+func (m *Magazine) Size() uint {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	return m.size
 }
 
 func (m *Magazine) Shoot() bool {
-	if m.Left() <= 0 {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.left <= 0 {
+		m.updateLocked()
+	}
+
+	if m.left <= 0 {
 		return false
 	}
 
@@ -70,17 +82,20 @@ func (m *Magazine) Shoot() bool {
 }
 
 func (m *Magazine) String() string {
-	return fmt.Sprintf(gl.MsgMagazineFmt, m.Left(), m.Size())
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.updateLocked()
+	return fmt.Sprintf(gl.MsgMagazineFmt, m.left, m.size)
 }
 
 func (ss *ShootService) GetMagazine(userID string) (q *Magazine) {
-	q, ok := ss.magazines[userID]
+	q, ok := ss.magazines.Get(userID)
 	if ok {
 		return
 	}
 
 	q = NewMagazine(ss.us.Config.MagazineSize)
-	ss.magazines[userID] = q
+	ss.magazines.Put(userID, q)
 	return
 }
 

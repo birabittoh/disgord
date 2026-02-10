@@ -27,12 +27,15 @@ func (ui *UIService) indexHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (ui *UIService) guildsHandler(w http.ResponseWriter, r *http.Request) {
-	if !ui.IsBotEnabled() {
+	ui.mu.RLock()
+	defer ui.mu.RUnlock()
+
+	if ui.bs == nil {
 		jsonSuccess(w, []any{})
 		return
 	}
 
-	jsonSuccess(w, ui.us.Session.State.Guilds)
+	jsonSuccess(w, ui.bs.US.Session.State.Guilds)
 }
 
 func (ui *UIService) queuesHandler(w http.ResponseWriter, r *http.Request) {
@@ -41,12 +44,13 @@ func (ui *UIService) queuesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := []map[string]any{}
-	for guildID, queue := range ui.bs.MS.Queues {
+	snapshots := ui.bs.MS.GetQueuesSnapshot()
+	response := make([]map[string]any, 0, len(snapshots))
+	for _, q := range snapshots {
 		response = append(response, map[string]any{
-			"guild_id":   guildID,
-			"channel_id": queue.VoiceChannelID(),
-			"tracks":     queue.Tracks(), // first track is currently playing
+			"guild_id":   q.GuildID,
+			"channel_id": q.VoiceChannelID,
+			"tracks":     q.Tracks,
 		})
 	}
 	jsonSuccess(w, response)
@@ -97,7 +101,14 @@ func (ui *UIService) guildLeaveHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := ui.us.Session.GuildLeave(guildID)
+	ui.mu.RLock()
+	defer ui.mu.RUnlock()
+	if ui.bs == nil {
+		jsonError(w, "Bot is disabled", http.StatusServiceUnavailable)
+		return
+	}
+
+	err := ui.bs.US.Session.GuildLeave(guildID)
 	if err != nil {
 		jsonError(w, "Failed to leave guild", http.StatusInternalServerError)
 		return
@@ -113,11 +124,23 @@ func (ui *UIService) handleQueuePlay(guildID string, payload QueueCommandPayload
 		return errors.New("VoiceChannelID is required for play command")
 	}
 
+	ui.mu.RLock()
+	defer ui.mu.RUnlock()
+	if ui.bs == nil || ui.bs.MS == nil {
+		return errors.New("bot or music service is disabled")
+	}
+
 	_, _, err := ui.bs.MS.PlayToVC(payload.Args, payload.VoiceChannelID, guildID)
 	return err
 }
 
 func (ui *UIService) handleQueueClear(guildID string, payload QueueCommandPayload) error {
+	ui.mu.RLock()
+	defer ui.mu.RUnlock()
+	if ui.bs == nil || ui.bs.MS == nil {
+		return errors.New("bot or music service is disabled")
+	}
+
 	queue := ui.bs.MS.GetQueue(guildID)
 	if queue == nil {
 		return errors.New("no active queue for this guild")
@@ -127,6 +150,12 @@ func (ui *UIService) handleQueueClear(guildID string, payload QueueCommandPayloa
 }
 
 func (ui *UIService) handleQueueSkip(guildID string, payload QueueCommandPayload) error {
+	ui.mu.RLock()
+	defer ui.mu.RUnlock()
+	if ui.bs == nil || ui.bs.MS == nil {
+		return errors.New("bot or music service is disabled")
+	}
+
 	queue := ui.bs.MS.GetQueue(guildID)
 	if queue == nil {
 		return errors.New("no active queue for this guild")
@@ -135,6 +164,12 @@ func (ui *UIService) handleQueueSkip(guildID string, payload QueueCommandPayload
 }
 
 func (ui *UIService) handleQueueStop(guildID string, payload QueueCommandPayload) error {
+	ui.mu.RLock()
+	defer ui.mu.RUnlock()
+	if ui.bs == nil || ui.bs.MS == nil {
+		return errors.New("bot or music service is disabled")
+	}
+
 	ui.bs.MS.DeleteQueue(guildID)
 	return nil
 }
@@ -150,21 +185,24 @@ func (ui *UIService) postBotStateHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	ui.mu.Lock()
 	if payload.Enabled {
-		if !ui.IsBotEnabled() {
+		if ui.bs == nil {
 			var err error
-			ui.bs, err = bot.NewBotService(ui.us.Config)
+			ui.bs, err = bot.NewBotService(ui.cfg)
 			if err != nil {
+				ui.mu.Unlock()
 				jsonError(w, "Failed to create bot service: "+err.Error(), http.StatusInternalServerError)
 				return
 			}
 		}
 	} else {
-		if ui.IsBotEnabled() {
+		if ui.bs != nil {
 			ui.bs.Stop()
 			ui.bs = nil
 		}
 	}
+	ui.mu.Unlock()
 
 	jsonSuccess(w, EnabledPayload{Enabled: ui.IsBotEnabled()})
 }

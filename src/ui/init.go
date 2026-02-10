@@ -44,6 +44,6 @@ func Main() (err error) {
 		gl.CommitID = getCommitID()
 	}
 
-	ui := NewUIService(bs)
+	ui := NewUIService(cfg, bs)
 	return ui.Start()
 }

@@ -6,15 +6,18 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 
 	"github.com/birabittoh/disgord/src/bot"
+	"github.com/birabittoh/disgord/src/config"
 	"github.com/birabittoh/disgord/src/globals"
 	"github.com/birabittoh/mylo"
 )
 
 type UIService struct {
+	mu     sync.RWMutex
 	bs     *bot.BotService
-	us     *globals.UtilsService
+	cfg    *config.Config
 	sigch  chan os.Signal
 	logger *mylo.Logger
 
@@ -36,15 +39,18 @@ type EnabledPayload struct {
 	Enabled bool `json:"enabled"`
 }
 
-func NewUIService(bs *bot.BotService) *UIService {
+func NewUIService(cfg *config.Config, bs *bot.BotService) *UIService {
 	ui := &UIService{
 		bs:            bs,
-		us:            bs.US,
-		logger:        mylo.New(os.Stdout, globals.LoggerUI, bs.US.Config.LogLevel, globals.LogFlags),
+		cfg:           cfg,
+		logger:        mylo.New(os.Stdout, globals.LoggerUI, cfg.LogLevel, globals.LogFlags),
 		mux:           http.NewServeMux(),
 		indexTemplate: template.Must(template.ParseFiles("templates" + globals.Sep + "index.html")),
-		botName:       bs.US.Session.State.User.Username,
-		inviteLink:    bs.US.GetInviteLink(),
+	}
+
+	if bs != nil {
+		ui.botName = bs.US.Session.State.User.Username
+		ui.inviteLink = bs.US.GetInviteLink()
 	}
 
 	ui.validQueueCmds = map[string]func(string, QueueCommandPayload) error{
@@ -68,9 +74,9 @@ func NewUIService(bs *bot.BotService) *UIService {
 }
 
 func (ui *UIService) Start() error {
-	ui.logger.Infof("Starting UI server on %s", ui.us.Config.UIAddress)
+	ui.logger.Infof("Starting UI server on %s", ui.cfg.UIAddress)
 	go func() {
-		if err := http.ListenAndServe(ui.us.Config.UIAddress, ui.mux); err != nil {
+		if err := http.ListenAndServe(ui.cfg.UIAddress, ui.mux); err != nil {
 			ui.logger.Errorf("UI server error: %s", err)
 			os.Exit(1)
 		}
@@ -80,11 +86,18 @@ func (ui *UIService) Start() error {
 	signal.Notify(ui.sigch, os.Interrupt)
 	<-ui.sigch
 
-	ui.bs.Stop()
+	ui.mu.RLock()
+	bs := ui.bs
+	ui.mu.RUnlock()
+	if bs != nil {
+		bs.Stop()
+	}
 	return nil
 }
 
 func (ui *UIService) IsBotEnabled() bool {
+	ui.mu.RLock()
+	defer ui.mu.RUnlock()
 	return ui.bs != nil
 }
 
