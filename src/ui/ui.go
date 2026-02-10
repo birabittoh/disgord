@@ -37,13 +37,18 @@ type EnabledPayload struct {
 }
 
 func NewUIService(bs *bot.BotService) *UIService {
+	botName := "Bot"
+	if bs.US.Session.State != nil && bs.US.Session.State.User != nil {
+		botName = bs.US.Session.State.User.Username
+	}
+
 	ui := &UIService{
 		bs:            bs,
 		us:            bs.US,
 		logger:        mylo.New(os.Stdout, globals.LoggerUI, bs.US.Config.LogLevel, globals.LogFlags),
 		mux:           http.NewServeMux(),
 		indexTemplate: template.Must(template.ParseFiles("templates" + globals.Sep + "index.html")),
-		botName:       bs.US.Session.State.User.Username,
+		botName:       botName,
 		inviteLink:    bs.US.GetInviteLink(),
 	}
 

@@ -11,9 +11,15 @@ import (
 )
 
 func (ui *UIService) indexHandler(w http.ResponseWriter, r *http.Request) {
+	botName := ui.botName
+	if botName == "Bot" && ui.us.Session.State != nil && ui.us.Session.State.User != nil {
+		botName = ui.us.Session.State.User.Username
+		ui.botName = botName
+	}
+
 	var b bytes.Buffer
 	err := ui.indexTemplate.Execute(&b, map[string]any{
-		"botName":    ui.botName,
+		"botName":    botName,
 		"inviteLink": ui.inviteLink,
 		"commitID":   globals.CommitID,
 	})
