@@ -3,7 +3,7 @@ module github.com/birabittoh/disgord
 go 1.25.1
 
 require (
-	github.com/birabittoh/miri v1.5.1
+	github.com/birabittoh/miri v1.5.2
 	github.com/birabittoh/mylo v0.0.2
 	github.com/bwmarrin/discordgo v0.29.0
 	github.com/joho/godotenv v1.5.1
