@@ -44,10 +44,6 @@ func Main() (err error) {
 		gl.CommitID = getCommitID()
 	}
 
-	ui, err := NewUIService(bs)
-	if err != nil {
-		return errors.New("could not create ui service: " + err.Error())
-	}
-
+	ui := NewUIService(bs)
 	return ui.Start()
 }

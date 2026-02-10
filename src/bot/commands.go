@@ -61,10 +61,7 @@ func NewBotService(cfg *config.Config) (bs *BotService, err error) {
 	bs.US.Session.AddHandler(bs.slashHandler)
 	bs.US.Session.AddHandler(bs.MS.HandleBotVSU)
 
-	err = bs.Start()
-	if err != nil {
-		return nil, errors.New("could not start bot service: " + err.Error())
-	}
+	bs.Start()
 
 	return bs, nil
 }
