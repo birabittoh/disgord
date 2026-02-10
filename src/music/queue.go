@@ -26,7 +26,7 @@ func (q *Queue) AddTracks(ms *MusicService, tracks []miri.SongResult) {
 	if q.nowPlaying == nil {
 		err := q.PlayNext(ms, false)
 		if err != nil {
-			ms.Logger.Error(err)
+			ms.Logger.Error("could not play next track", "error", err)
 		}
 	}
 }

@@ -3,20 +3,21 @@ package ui
 import (
 	"encoding/json"
 	"html/template"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
 
 	"github.com/birabittoh/disgord/src/bot"
 	"github.com/birabittoh/disgord/src/globals"
-	"github.com/birabittoh/mylo"
+	"github.com/lmittmann/tint"
 )
 
 type UIService struct {
 	bs     *bot.BotService
 	us     *globals.UtilsService
 	sigch  chan os.Signal
-	logger *mylo.Logger
+	logger *slog.Logger
 
 	mux            *http.ServeMux
 	indexTemplate  *template.Template
@@ -38,9 +39,12 @@ type EnabledPayload struct {
 
 func NewUIService(bs *bot.BotService) *UIService {
 	ui := &UIService{
-		bs:            bs,
-		us:            bs.US,
-		logger:        mylo.New(os.Stdout, globals.LoggerUI, bs.US.Config.LogLevel, globals.LogFlags),
+		bs: bs,
+		us: bs.US,
+		logger: slog.New(tint.NewHandler(os.Stdout, &tint.Options{
+			Level:      bs.US.Config.LogLevel,
+			TimeFormat: bs.US.Config.TimeFormat,
+		})).With("service", globals.LoggerUI),
 		mux:           http.NewServeMux(),
 		indexTemplate: template.Must(template.ParseFiles("templates" + globals.Sep + "index.html")),
 		botName:       bs.US.Session.State.User.Username,
@@ -68,10 +72,10 @@ func NewUIService(bs *bot.BotService) *UIService {
 }
 
 func (ui *UIService) Start() error {
-	ui.logger.Infof("Starting UI server on %s", ui.us.Config.UIAddress)
+	ui.logger.Info("Starting UI server", "address", ui.us.Config.UIAddress)
 	go func() {
 		if err := http.ListenAndServe(ui.us.Config.UIAddress, ui.mux); err != nil {
-			ui.logger.Errorf("UI server error: %s", err)
+			ui.logger.Error("UI server error", "error", err)
 			os.Exit(1)
 		}
 	}()

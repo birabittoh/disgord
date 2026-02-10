@@ -2,20 +2,22 @@ package shoot
 
 import (
 	"fmt"
+	"log/slog"
 	"math/rand/v2"
 	"os"
 	"time"
 
 	gl "github.com/birabittoh/disgord/src/globals"
-	"github.com/birabittoh/mylo"
 	"github.com/bwmarrin/discordgo"
+	lru "github.com/hashicorp/golang-lru/v2"
+	"github.com/lmittmann/tint"
 )
 
 type ShootService struct {
 	us *gl.UtilsService
 
-	logger    *mylo.Logger
-	magazines map[string]*Magazine
+	logger    *slog.Logger
+	magazines *lru.Cache[string, *Magazine]
 }
 
 type Magazine struct {
@@ -32,10 +34,19 @@ func NewShootService(us *gl.UtilsService) *ShootService {
 		us.Config.BustProbability = 100
 	}
 
+	cache, err := lru.New[string, *Magazine](128)
+	if err != nil {
+		// This should not happen with a hardcoded size of 128
+		panic(err)
+	}
+
 	return &ShootService{
-		us:        us,
-		logger:    mylo.New(os.Stdout, gl.LoggerShoot, us.Config.LogLevel, gl.LogFlags),
-		magazines: make(map[string]*Magazine),
+		us: us,
+		logger: slog.New(tint.NewHandler(os.Stdout, &tint.Options{
+			Level:      us.Config.LogLevel,
+			TimeFormat: us.Config.TimeFormat,
+		})).With("service", gl.LoggerShoot),
+		magazines: cache,
 	}
 }
 
@@ -74,13 +85,13 @@ func (m *Magazine) String() string {
 }
 
 func (ss *ShootService) GetMagazine(userID string) (q *Magazine) {
-	q, ok := ss.magazines[userID]
+	q, ok := ss.magazines.Get(userID)
 	if ok {
 		return
 	}
 
 	q = NewMagazine(ss.us.Config.MagazineSize)
-	ss.magazines[userID] = q
+	ss.magazines.Add(userID, q)
 	return
 }
 
@@ -97,7 +108,7 @@ func (ss *ShootService) HandleShoot(args string, m *discordgo.MessageCreate) *di
 		if vs.ChannelID == voiceChannelID && vs.UserID != killerID {
 			vs.Member, err = ss.us.Session.State.Member(guild.ID, vs.UserID)
 			if err != nil {
-				ss.logger.Errorf("could not get member info: %s", err)
+				ss.logger.Error("could not get member info", "error", err)
 				continue
 			}
 			if !vs.Member.User.Bot {
@@ -122,7 +133,7 @@ func (ss *ShootService) HandleShoot(args string, m *discordgo.MessageCreate) *di
 
 	err = ss.us.Session.GuildMemberMove(m.GuildID, victimID, nil)
 	if err != nil {
-		ss.logger.Errorf("could not kick user: %s", err)
+		ss.logger.Error("could not kick user", "error", err)
 		return ss.us.EmbedMessage(gl.MsgCantKickUser)
 	}
 
