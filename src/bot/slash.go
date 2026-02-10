@@ -138,6 +138,10 @@ func (bs *BotService) slashHandler(s *discordgo.Session, i *discordgo.Interactio
 		}
 
 		name := i.ApplicationCommandData().Name
+		if aliasTo, isAlias := bs.aliasMap[name]; isAlias {
+			name = aliasTo
+		}
+
 		bc := bs.getCommand(name)
 		if bc == nil {
 			response := bs.US.EmbedToResponse(bs.US.EmbedMessage(fmt.Sprintf(gl.MsgUnknownCommand, name)))
@@ -155,7 +159,22 @@ func (bs *BotService) slashHandler(s *discordgo.Session, i *discordgo.Interactio
 
 		m := bs.US.InteractionToMessageCreate(i, argsCombined)
 		response := bs.US.EmbedToResponse(bc.Handler(argsCombined, m))
-		s.InteractionRespond(i.Interaction, response)
+		err := s.InteractionRespond(i.Interaction, response)
+		if err == nil && name == "search" && bs.MS != nil {
+			msg, err := s.InteractionResponse(i.Interaction)
+			if err == nil && msg != nil {
+				var authorID string
+				if i.Member != nil {
+					authorID = i.Member.User.ID
+				} else if i.User != nil {
+					authorID = i.User.ID
+				}
+
+				if authorID != "" {
+					bs.MS.SetSearchMessageID(i.ChannelID, authorID, msg.ID)
+				}
+			}
+		}
 
 	default:
 		bs.logger.Warn("Unhandled interaction type", "type", i.Type)

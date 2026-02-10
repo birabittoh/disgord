@@ -125,7 +125,10 @@ func (ms *MusicService) HandleSearch(args string, m *discordgo.MessageCreate) *d
 	})
 
 	key := getPendingSearchKey(m.ChannelID, m.Author.ID)
-	ms.Searches.Add(key, results[:maxResults])
+	if old, ok := ms.Searches.Get(key); ok && old.MessageID != "" {
+		ms.us.Session.ChannelMessageDelete(m.ChannelID, old.MessageID)
+	}
+	ms.Searches.Add(key, &PendingSearch{Results: results[:maxResults]})
 
 	// Split buttons into rows of max 5
 	var components []discordgo.MessageComponent
@@ -293,8 +296,8 @@ func (ms *MusicService) HandleChooseTrack(arg string, i *discordgo.InteractionCr
 	}
 
 	key := getPendingSearchKey(i.ChannelID, i.Member.User.ID)
-	results, found := ms.Searches.Get(key)
-	if !found || trackIdx > len(results) {
+	ps, found := ms.Searches.Get(key)
+	if !found || trackIdx > len(ps.Results) {
 		return ms.us.EmbedMessage(gl.MsgCantFindSearch)
 	}
 
@@ -305,7 +308,7 @@ func (ms *MusicService) HandleChooseTrack(arg string, i *discordgo.InteractionCr
 		return nil
 	}
 
-	track := &results[trackIdx-1]
+	track := &ps.Results[trackIdx-1]
 	r, _, vc := ms.us.GetVoiceChannelID(i.Member, i.GuildID, i.Member.User.ID)
 	if r != "" {
 		return ms.us.EmbedMessage(r)
