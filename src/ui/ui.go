@@ -2,6 +2,7 @@ package ui
 
 import (
 	"encoding/json"
+	"errors"
 	"html/template"
 	"log/slog"
 	"net/http"
@@ -37,7 +38,11 @@ type EnabledPayload struct {
 	Enabled bool `json:"enabled"`
 }
 
-func NewUIService(bs *bot.BotService) *UIService {
+func NewUIService(bs *bot.BotService) (*UIService, error) {
+	if bs.US.Session.State.User == nil {
+		return nil, errors.New("user is nil")
+	}
+
 	ui := &UIService{
 		bs: bs,
 		us: bs.US,
@@ -68,7 +73,7 @@ func NewUIService(bs *bot.BotService) *UIService {
 	ui.mux.HandleFunc("POST /api/bot/state", ui.postBotStateHandler)
 	ui.mux.HandleFunc("GET /healthz", ui.healthzHandler)
 
-	return ui
+	return ui, nil
 }
 
 func (ui *UIService) Start() error {
