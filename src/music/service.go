@@ -30,7 +30,7 @@ func NewMusicService(us *globals.UtilsService) (*MusicService, error) {
 		us: us,
 		Logger: slog.New(tint.NewHandler(os.Stdout, &tint.Options{
 			Level:      us.Config.LogLevel,
-			TimeFormat: time.TimeOnly,
+			TimeFormat: us.Config.TimeFormat,
 		})).With("service", globals.LoggerMusic),
 		Queues:   make(map[string]*Queue),
 		Searches: cache,

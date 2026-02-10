@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"os"
 	"slices"
-	"time"
 
 	"github.com/birabittoh/disgord/src/config"
 	gl "github.com/birabittoh/disgord/src/globals"
@@ -35,7 +34,7 @@ func NewBotService(cfg *config.Config) (bs *BotService, err error) {
 	}
 	bs.logger = slog.New(tint.NewHandler(os.Stdout, &tint.Options{
 		Level:      bs.US.Config.LogLevel,
-		TimeFormat: time.TimeOnly,
+		TimeFormat: cfg.TimeFormat,
 	})).With("service", gl.LoggerMain)
 
 	bs.US.Session, err = discordgo.New("Bot " + bs.US.Config.BotToken)

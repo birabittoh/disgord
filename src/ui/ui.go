@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"time"
 
 	"github.com/birabittoh/disgord/src/bot"
 	"github.com/birabittoh/disgord/src/globals"
@@ -44,7 +43,7 @@ func NewUIService(bs *bot.BotService) *UIService {
 		us: bs.US,
 		logger: slog.New(tint.NewHandler(os.Stdout, &tint.Options{
 			Level:      bs.US.Config.LogLevel,
-			TimeFormat: time.TimeOnly,
+			TimeFormat: bs.US.Config.TimeFormat,
 		})).With("service", globals.LoggerUI),
 		mux:           http.NewServeMux(),
 		indexTemplate: template.Must(template.ParseFiles("templates" + globals.Sep + "index.html")),

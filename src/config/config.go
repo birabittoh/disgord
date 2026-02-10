@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"strconv"
+	"time"
 )
 
 type Config struct {
@@ -12,6 +13,7 @@ type Config struct {
 	ApplicationID string // required
 	BotToken      string // required
 	LogLevel      slog.Level
+	TimeFormat    string
 	Prefix        string
 	Color         int
 	UIAddress     string
@@ -98,6 +100,7 @@ func New() (*Config, error) {
 		DisablePrefixCommands: getEnvBool("DISABLE_PREFIX_COMMANDS", false),
 		DisableMusic:          getEnvBool("DISABLE_MUSIC", false),
 		DisableShoot:          getEnvBool("DISABLE_SHOOT", false),
+		TimeFormat:            time.RFC3339,
 	}
 
 	if getEnvBool("DEBUG", false) {

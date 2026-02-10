@@ -44,7 +44,7 @@ func NewShootService(us *gl.UtilsService) *ShootService {
 		us: us,
 		logger: slog.New(tint.NewHandler(os.Stdout, &tint.Options{
 			Level:      us.Config.LogLevel,
-			TimeFormat: time.TimeOnly,
+			TimeFormat: us.Config.TimeFormat,
 		})).With("service", gl.LoggerShoot),
 		magazines: cache,
 	}
