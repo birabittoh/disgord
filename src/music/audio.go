@@ -6,6 +6,8 @@ import (
 	"io"
 	"os/exec"
 	"strconv"
+	"sync"
+	"sync/atomic"
 
 	gl "github.com/birabittoh/disgord/src/globals"
 	"github.com/birabittoh/miri"
@@ -14,21 +16,22 @@ import (
 )
 
 type Audio struct {
-	playing      bool
+	playing      atomic.Bool
 	Done         chan error
 	opusEncoder  *gopus.Encoder
 	encodeChan   chan []int16
 	outputChan   chan []byte
 	ffmpegStream io.ReadCloser
 	ffmpegCmd    *exec.Cmd
-	onFinish     func()
+
+	mu       sync.Mutex
+	onFinish func()
 
 	ms *MusicService
 }
 
 func NewAudio(track *miri.SongResult, vc *discordgo.VoiceConnection, ms *MusicService, seekTo int) (a *Audio, err error) {
 	a = &Audio{
-		playing:    true,
 		Done:       make(chan error),
 		encodeChan: make(chan []int16, 450),
 		outputChan: make(chan []byte, 450),
@@ -159,19 +162,22 @@ func (a *Audio) encoder() {
 }
 
 func (a *Audio) play_sound(vc *discordgo.VoiceConnection) (err error) {
-	a.playing = true
+	a.playing.Store(true)
 	defer func() {
 		if r := recover(); r != nil {
 			a.ms.Logger.Error("Recovered from panic in play_sound:", r)
 			err = nil
 		}
-		a.Done <- err
+		select {
+		case a.Done <- err:
+		default:
+		}
 	}()
 
-	for a.playing {
+	for a.playing.Load() {
 		opus, ok := <-a.outputChan
 		if !ok {
-			a.playing = false
+			a.playing.Store(false)
 			break
 		}
 		if vc != nil && vc.OpusSend != nil {
@@ -180,7 +186,7 @@ func (a *Audio) play_sound(vc *discordgo.VoiceConnection) (err error) {
 				defer func() {
 					if r := recover(); r != nil {
 						a.ms.Logger.Println("OpusSend channel closed, stopping playback")
-						a.playing = false
+						a.playing.Store(false)
 					}
 				}()
 				vc.OpusSend <- opus
@@ -191,8 +197,12 @@ func (a *Audio) play_sound(vc *discordgo.VoiceConnection) (err error) {
 	return nil
 }
 
+func (a *Audio) Playing() bool {
+	return a.playing.Load()
+}
+
 func (a *Audio) Stop() {
-	a.playing = false
+	a.playing.Store(false)
 
 	// Close the ffmpeg stream
 	if a.ffmpegStream != nil {
@@ -221,8 +231,17 @@ func (a *Audio) Monitor() {
 			a.ffmpegCmd.Wait() // Wait for the process to finish
 		}
 
-		if a.onFinish != nil {
-			a.onFinish()
+		a.mu.Lock()
+		f := a.onFinish
+		a.mu.Unlock()
+		if f != nil {
+			f()
 		}
 	}()
+}
+
+func (a *Audio) SetOnFinish(f func()) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.onFinish = f
 }

@@ -2,28 +2,32 @@ package music
 
 import (
 	"os"
+	"sync"
 	"time"
 
 	"github.com/birabittoh/disgord/src/globals"
 	"github.com/birabittoh/miri"
 	"github.com/birabittoh/mylo"
 	"github.com/bwmarrin/discordgo"
+	lru "github.com/hashicorp/golang-lru/v2"
 )
 
 type MusicService struct {
 	us *globals.UtilsService
 
 	Logger   *mylo.Logger
+	mu       sync.RWMutex
 	Queues   map[string]*Queue
-	Searches map[string][]miri.SongResult
+	Searches *lru.Cache[string, []miri.SongResult]
 }
 
 func NewMusicService(us *globals.UtilsService) (*MusicService, error) {
+	searches, _ := lru.New[string, []miri.SongResult](100)
 	return &MusicService{
 		us:       us,
 		Logger:   mylo.New(os.Stdout, globals.LoggerMusic, us.Config.LogLevel, globals.LogFlags),
 		Queues:   make(map[string]*Queue),
-		Searches: make(map[string][]miri.SongResult),
+		Searches: searches,
 	}, nil
 }
 
@@ -47,8 +51,11 @@ func (ms *MusicService) GetVoiceConnection(vc string, guildID string) (voice *di
 }
 
 func (ms *MusicService) GetOrCreateQueue(vc *discordgo.VoiceConnection, channelID string) (*Queue, error) {
-	q := ms.GetQueue(vc.GuildID)
-	if q == nil {
+	ms.mu.Lock()
+	defer ms.mu.Unlock()
+
+	q, ok := ms.Queues[vc.GuildID]
+	if !ok || (q.NowPlaying() == nil && len(q.Tracks()) == 0) {
 		dCfg, err := miri.NewConfig(ms.us.Config.ArlCookie, ms.us.Config.SecretKey)
 		if err != nil {
 			return nil, err
@@ -68,19 +75,22 @@ func (ms *MusicService) GetOrCreateQueue(vc *discordgo.VoiceConnection, channelI
 		ms.Queues[vc.GuildID] = q
 	} else {
 		// Update the voice connection and channel in case they changed
+		q.mu.Lock()
 		q.vc = vc
 		q.channelID = channelID
+		q.mu.Unlock()
 	}
 
 	return q, nil
 }
 
 func (ms *MusicService) GetQueue(guildID string) *Queue {
+	ms.mu.RLock()
+	defer ms.mu.RUnlock()
+
 	q, ok := ms.Queues[guildID]
 	if ok {
-		if q.nowPlaying == nil && len(q.items) == 0 {
-			// clean up empty queue
-			delete(ms.Queues, guildID)
+		if q.NowPlaying() == nil && len(q.Tracks()) == 0 {
 			return nil
 		}
 		return q
@@ -89,6 +99,9 @@ func (ms *MusicService) GetQueue(guildID string) *Queue {
 }
 
 func (ms *MusicService) DeleteQueue(guildID string) {
+	ms.mu.Lock()
+	defer ms.mu.Unlock()
+
 	q, exists := ms.Queues[guildID]
 	if !exists {
 		return

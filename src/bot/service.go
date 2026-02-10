@@ -38,6 +38,8 @@ func NewBotService(cfg *config.Config) (bs *BotService, err error) {
 		return nil, errors.New("could not create bot session: " + err.Error())
 	}
 
+	bs.US.Session.Identify.Intents = discordgo.IntentsGuilds | discordgo.IntentsGuildMessages | discordgo.IntentsGuildVoiceStates | discordgo.IntentsMessageContent
+
 	if !bs.US.Config.DisableShoot {
 		bs.SS = shoot.NewShootService(bs.US)
 	}
@@ -218,19 +220,3 @@ func (bs *BotService) handleCommand(m *discordgo.MessageCreate) (response *disco
 	return
 }
 
-func (bs *BotService) handleEcho(args string, m *discordgo.MessageCreate) *discordgo.MessageSend {
-	if len(args) == 0 {
-		return nil
-	}
-	return bs.US.EmbedMessage(args)
-}
-
-func (bs *BotService) handleHelp(args string, m *discordgo.MessageCreate) *discordgo.MessageSend {
-	helpText := gl.MsgHelp
-
-	for _, command := range bs.commandNames {
-		helpText += fmt.Sprintf(gl.MsgUnorderedList, bs.US.FormatHelp(command, bs.handlersMap[command]))
-	}
-
-	return bs.US.EmbedMessage(helpText)
-}

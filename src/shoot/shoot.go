@@ -4,21 +4,24 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"os"
+	"sync"
 	"time"
 
 	gl "github.com/birabittoh/disgord/src/globals"
 	"github.com/birabittoh/mylo"
 	"github.com/bwmarrin/discordgo"
+	lru "github.com/hashicorp/golang-lru/v2"
 )
 
 type ShootService struct {
 	us *gl.UtilsService
 
 	logger    *mylo.Logger
-	magazines map[string]*Magazine
+	magazines *lru.Cache[string, *Magazine]
 }
 
 type Magazine struct {
+	mu   sync.RWMutex
 	size uint
 	left uint
 	last time.Time
@@ -32,10 +35,11 @@ func NewShootService(us *gl.UtilsService) *ShootService {
 		us.Config.BustProbability = 100
 	}
 
+	magazines, _ := lru.New[string, *Magazine](1000)
 	return &ShootService{
 		us:        us,
 		logger:    mylo.New(os.Stdout, gl.LoggerShoot, us.Config.LogLevel, gl.LogFlags),
-		magazines: make(map[string]*Magazine),
+		magazines: magazines,
 	}
 }
 
@@ -44,6 +48,8 @@ func NewMagazine(size uint) *Magazine {
 }
 
 func (m *Magazine) Update() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	now := time.Now()
 	if m.last.YearDay() != now.YearDay() || m.last.Year() != now.Year() {
 		m.left = m.size
@@ -52,10 +58,14 @@ func (m *Magazine) Update() {
 
 func (m *Magazine) Left() uint {
 	m.Update()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	return m.left
 }
 
-func (m Magazine) Size() uint {
+func (m *Magazine) Size() uint {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	return m.size
 }
 
@@ -64,6 +74,8 @@ func (m *Magazine) Shoot() bool {
 		return false
 	}
 
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.last = time.Now()
 	m.left--
 	return true
@@ -74,13 +86,14 @@ func (m *Magazine) String() string {
 }
 
 func (ss *ShootService) GetMagazine(userID string) (q *Magazine) {
-	q, ok := ss.magazines[userID]
+	var ok bool
+	q, ok = ss.magazines.Get(userID)
 	if ok {
 		return
 	}
 
 	q = NewMagazine(ss.us.Config.MagazineSize)
-	ss.magazines[userID] = q
+	ss.magazines.Add(userID, q)
 	return
 }
 
