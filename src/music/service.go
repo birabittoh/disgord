@@ -52,7 +52,7 @@ func (ms *MusicService) GetVoiceConnection(vc string, guildID string) (voice *di
 		}
 	}
 	if !alreadyConnected {
-		voice, err = ms.us.Session.ChannelVoiceJoin(guildID, vc, false, true)
+		voice, err = ms.us.Session.ChannelVoiceJoin(ms.us.Ctx, guildID, vc, false, true)
 		if err != nil {
 			ms.Logger.Error("could not join voice channel", "error", err)
 			return nil, err
