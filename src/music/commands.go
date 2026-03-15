@@ -25,7 +25,7 @@ func (ms *MusicService) PlayToVC(query string, vc string, guildID string) (respo
 	q, err := ms.GetOrCreateQueue(voice, vc)
 	if err != nil {
 		ms.Logger.Error("could not create queue", "error", err)
-		voice.Disconnect(ms.us.Ctx)
+		voice.Disconnect()
 		response = gl.MsgError
 		return
 	}
@@ -39,7 +39,7 @@ func (ms *MusicService) PlayToVC(query string, vc string, guildID string) (respo
 	if err != nil {
 		ms.Logger.Error("could not search track", "error", err)
 		if q.nowPlaying == nil {
-			voice.Disconnect(ms.us.Ctx)
+			voice.Disconnect()
 		}
 		response = gl.MsgError
 		return
@@ -47,7 +47,7 @@ func (ms *MusicService) PlayToVC(query string, vc string, guildID string) (respo
 
 	if len(results) == 0 {
 		if q.nowPlaying == nil {
-			voice.Disconnect(ms.us.Ctx)
+			voice.Disconnect()
 		}
 		response = gl.MsgNoResults
 		return
@@ -322,7 +322,7 @@ func (ms *MusicService) HandleChooseTrack(arg string, i *discordgo.InteractionCr
 	q, err := ms.GetOrCreateQueue(voice, vc)
 	if err != nil {
 		ms.Logger.Error("could not create queue", "error", err)
-		voice.Disconnect(ms.us.Ctx)
+		voice.Disconnect()
 		return ms.us.EmbedMessage(gl.MsgError)
 	}
 

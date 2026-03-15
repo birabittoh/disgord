@@ -89,8 +89,8 @@ func (q *Queue) Stop() {
 	}
 
 	q.nowPlaying = nil
-	if q.vc != nil && q.ctx != nil {
-		q.vc.Disconnect(q.ctx)
+	if q.vc != nil {
+		q.vc.Disconnect()
 	}
 	q.vc = nil // Clear the stale connection
 }
