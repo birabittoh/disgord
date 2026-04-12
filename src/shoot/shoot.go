@@ -106,12 +106,20 @@ func (ss *ShootService) HandleShoot(args string, m *discordgo.MessageCreate) *di
 	var err error
 	for _, vs := range guild.VoiceStates {
 		if vs.ChannelID == voiceChannelID && vs.UserID != killerID {
-			vs.Member, err = ss.us.Session.State.Member(guild.ID, vs.UserID)
-			if err != nil {
-				ss.logger.Error("could not get member info", "error", err)
-				continue
+			member := vs.Member
+			if member == nil {
+				member, _ = ss.us.Session.State.Member(guild.ID, vs.UserID)
 			}
-			if !vs.Member.User.Bot {
+
+			if member == nil {
+				member, err = ss.us.Session.GuildMember(guild.ID, vs.UserID)
+				if err != nil {
+					ss.logger.Error("could not get member info", "error", err, "userID", vs.UserID)
+					continue
+				}
+			}
+
+			if member.User != nil && !member.User.Bot {
 				allMembers = append(allMembers, vs.UserID)
 			}
 		}
