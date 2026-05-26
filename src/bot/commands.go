@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"slices"
+	"time"
 
 	"github.com/birabittoh/disgord/src/config"
 	gl "github.com/birabittoh/disgord/src/globals"
@@ -25,6 +26,7 @@ type BotService struct {
 	handlersMap     map[string]gl.BotCommand
 	aliasMap        map[string]string
 	commandNames    []string
+	watchdogDone    chan struct{}
 }
 
 func NewBotService(cfg *config.Config) (bs *BotService, err error) {
@@ -72,6 +74,9 @@ func (bs *BotService) Start() error {
 		return errors.New("could not open session: " + err.Error())
 	}
 
+	bs.watchdogDone = make(chan struct{})
+	go bs.watchGateway(bs.watchdogDone)
+
 	go func() {
 		err := bs.registerSlashCommands()
 		if err != nil {
@@ -84,10 +89,41 @@ func (bs *BotService) Start() error {
 }
 
 func (bs *BotService) Stop() {
+	// Stop the watchdog before closing the session so an intentional shutdown
+	// (e.g. UI toggle) doesn't trip it into exiting the process.
+	if bs.watchdogDone != nil {
+		close(bs.watchdogDone)
+		bs.watchdogDone = nil
+	}
 	if err := bs.US.Session.Close(); err != nil {
 		bs.logger.Error("could not close session", "error", err)
 	}
 	bs.logger.Info("Bot stopped")
+}
+
+// IsConnected reports whether the gateway has produced a heartbeat ACK recently.
+func (bs *BotService) IsConnected() bool {
+	return bs.US.Session != nil && time.Since(bs.US.Session.LastHeartbeatAck) < gl.GatewayHealthThreshold
+}
+
+// watchGateway exits the process when the gateway stays unresponsive past the
+// timeout, letting Docker's restart policy bring up a fresh connection.
+func (bs *BotService) watchGateway(done chan struct{}) {
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-done:
+			return
+		case <-ticker.C:
+			stale := time.Since(bs.US.Session.LastHeartbeatAck)
+			if stale > gl.GatewayWatchdogTimeout {
+				bs.logger.Error("gateway unresponsive, exiting for restart", "since_last_ack", stale.String())
+				os.Exit(1)
+			}
+		}
+	}
 }
 
 // don't remove the 's' parameter

@@ -170,5 +170,11 @@ func (ui *UIService) postBotStateHandler(w http.ResponseWriter, r *http.Request)
 }
 
 func (ui *UIService) healthzHandler(w http.ResponseWriter, r *http.Request) {
+	// A nil bs means the bot was intentionally disabled via the UI: report healthy
+	// so the container isn't restarted. Otherwise the gateway must be alive.
+	if ui.bs != nil && !ui.bs.IsConnected() {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		return
+	}
 	w.WriteHeader(http.StatusNoContent)
 }
