@@ -2,6 +2,7 @@ package globals
 
 import (
 	"os"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 )
@@ -60,6 +61,14 @@ const (
 	AudioBitrate     int    = 128
 	AudioApplication string = "voip"
 	MaxBytes         int    = (AudioFrameSize * AudioChannels) * 2
+
+	// GatewayHealthThreshold is how long the gateway can go without a heartbeat
+	// ACK before /healthz reports the bot as unhealthy (~2 missed heartbeats).
+	GatewayHealthThreshold = 90 * time.Second
+	// GatewayWatchdogTimeout is how long the gateway can stay unresponsive before
+	// the watchdog exits the process so Docker restarts it. Kept above discordgo's
+	// own ack-based reconnect window so its internal reconnect runs first.
+	GatewayWatchdogTimeout = 5 * time.Minute
 
 	Sep = string(os.PathSeparator)
 )

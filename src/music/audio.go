@@ -1,9 +1,12 @@
 package music
 
 import (
+	"context"
+	"errors"
 	"io"
 	"os/exec"
 	"strconv"
+	"syscall"
 
 	gl "github.com/birabittoh/disgord/src/globals"
 	"github.com/birabittoh/miri"
@@ -39,6 +42,13 @@ func NewAudio(track *miri.SongResult, vc *discordgo.VoiceConnection, ms *MusicSe
 	go a.reader()
 	go a.play_sound(vc)
 	return
+}
+
+// isExpectedStreamStop reports whether a streaming error is the expected result
+// of playback being skipped/stopped (ffmpeg killed while miri is still writing to
+// its stdin) rather than a genuine failure.
+func isExpectedStreamStop(err error) bool {
+	return errors.Is(err, syscall.EPIPE) || errors.Is(err, io.ErrClosedPipe) || errors.Is(err, context.Canceled)
 }
 
 func (a *Audio) downloader(track *miri.SongResult, seekTo int, guildID string, bitrate int) {
@@ -80,7 +90,11 @@ func (a *Audio) downloader(track *miri.SongResult, seekTo int, guildID string, b
 		// Stream the track into ffmpeg's stdin
 		err := q.client.StreamTrackByID(a.ms.us.Ctx, track.ID, ffmpegStdin)
 		if err != nil {
-			a.ms.Logger.Error("Error streaming track to ffmpeg stdin", "error", err)
+			if isExpectedStreamStop(err) {
+				a.ms.Logger.Debug("track stream stopped early (consumer closed)", "error", err)
+			} else {
+				a.ms.Logger.Error("Error streaming track to ffmpeg stdin", "error", err)
+			}
 		}
 		ffmpegStdin.Close()
 	}()
