@@ -187,6 +187,7 @@ func (bs *BotService) initHandlers() {
 		"queue":  {ShortCode: "q", Handler: bs.MS.HandleQueue, Help: "shows the current queue", Tag: "music"},
 		"clear":  {ShortCode: "c", Handler: bs.MS.HandleClear, Help: "clears the current queue", Tag: "music"},
 		"leave":  {Alias: "stop", Handler: bs.MS.HandleLeave, Help: "leaves the voice channel", Tag: "music"},
+		"debug":  {ShortCode: "d", Handler: bs.MS.HandleDebugSound, Help: "plays a debug tone in voice channel", Tag: "music"},
 		"shoot":  {Alias: "bang", Handler: bs.SS.HandleShoot, Help: "shoots a random user in your voice channel", Tag: "shoot"},
 	}
 
