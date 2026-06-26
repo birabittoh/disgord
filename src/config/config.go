@@ -19,8 +19,10 @@ type Config struct {
 	UIAddress     string
 
 	// Music settings
-	ArlCookie        string // required for music
-	SecretKey        string // requred for music
+	ArlCookie        string
+	SecretKey        string // required for music
+	DeezerEmail      string // required for music if ARL_COOKIE is not set
+	DeezerPassword   string // required for music if ARL_COOKIE is not set
 	AlbumCoverSize   string
 	MaxSearchResults uint64
 
@@ -89,6 +91,8 @@ func New() (*Config, error) {
 
 		ArlCookie:        getEnv("ARL_COOKIE", ""),
 		SecretKey:        getEnv("SECRET_KEY", ""),
+		DeezerEmail:      getEnv("DEEZER_EMAIL", ""),
+		DeezerPassword:   getEnv("DEEZER_PASSWORD", ""),
 		AlbumCoverSize:   getEnv("ALBUM_COVER_SIZE", "xl"),
 		MaxSearchResults: uint64(getEnvUint("MAX_SEARCH_RESULTS", 9)),
 
@@ -128,8 +132,13 @@ func (c *Config) Validate() error {
 		return errors.New("UI address must be set")
 	}
 
-	if !c.DisableMusic && (c.ArlCookie == "" || c.SecretKey == "") {
-		return errors.New("ARL_COOKIE and SECRET_KEY must be set if DISABLE_MUSIC is false")
+	if !c.DisableMusic {
+		if c.SecretKey == "" {
+			return errors.New("SECRET_KEY must be set if DISABLE_MUSIC is false")
+		}
+		if c.ArlCookie == "" && (c.DeezerEmail == "" || c.DeezerPassword == "") {
+			return errors.New("ARL_COOKIE or DEEZER_EMAIL+DEEZER_PASSWORD must be set if DISABLE_MUSIC is false")
+		}
 	}
 
 	allowedSizes := map[string]bool{

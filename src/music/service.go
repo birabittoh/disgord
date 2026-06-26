@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/birabittoh/disgord/src/deezer"
 	"github.com/birabittoh/disgord/src/globals"
 	"github.com/birabittoh/miri"
 	"github.com/bwmarrin/discordgo"
@@ -18,7 +19,8 @@ type PendingSearch struct {
 }
 
 type MusicService struct {
-	us *globals.UtilsService
+	us  *globals.UtilsService
+	arl *deezer.Manager
 
 	Logger   *slog.Logger
 	Queues   map[string]*Queue
@@ -31,12 +33,22 @@ func NewMusicService(us *globals.UtilsService) (*MusicService, error) {
 		return nil, err
 	}
 
+	logger := slog.New(tint.NewHandler(os.Stdout, &tint.Options{
+		Level:      us.Config.LogLevel,
+		TimeFormat: us.Config.TimeFormat,
+	})).With("service", globals.LoggerMusic)
+
+	arlMgr := deezer.NewManager(
+		logger,
+		us.Config.ArlCookie,
+		us.Config.DeezerEmail,
+		us.Config.DeezerPassword,
+	)
+
 	return &MusicService{
-		us: us,
-		Logger: slog.New(tint.NewHandler(os.Stdout, &tint.Options{
-			Level:      us.Config.LogLevel,
-			TimeFormat: us.Config.TimeFormat,
-		})).With("service", globals.LoggerMusic),
+		us:       us,
+		arl:      arlMgr,
+		Logger:   logger,
 		Queues:   make(map[string]*Queue),
 		Searches: cache,
 	}, nil
@@ -64,30 +76,60 @@ func (ms *MusicService) GetVoiceConnection(vc string, guildID string) (voice *di
 func (ms *MusicService) GetOrCreateQueue(vc *discordgo.VoiceConnection, channelID string) (*Queue, error) {
 	q := ms.GetQueue(vc.GuildID)
 	if q == nil {
-		dCfg, err := miri.NewConfig(ms.us.Config.ArlCookie, ms.us.Config.SecretKey)
+		client, err := ms.newMiriClient()
 		if err != nil {
 			return nil, err
 		}
 
-		dCfg.Timeout = 30 * time.Minute // long timeout for music streaming
 		q = &Queue{
 			vc:        vc,
 			channelID: channelID,
 			ctx:       ms.us.Ctx,
-		}
-
-		q.client, err = miri.New(ms.us.Ctx, dCfg)
-		if err != nil {
-			return nil, err
+			client:    client,
 		}
 		ms.Queues[vc.GuildID] = q
 	} else {
-		// Update the voice connection and channel in case they changed
 		q.vc = vc
 		q.channelID = channelID
 	}
 
 	return q, nil
+}
+
+func (ms *MusicService) newMiriClient() (*miri.Client, error) {
+	arl, err := ms.arl.EnsureARL()
+	if err != nil {
+		return nil, err
+	}
+
+	client, err := ms.createClient(arl)
+	if err != nil && deezer.IsARLExpiredError(err) && ms.arl.CanRenew() {
+		ms.Logger.Warn("ARL expired, attempting renewal...")
+		arl, err = ms.arl.Renew()
+		if err != nil {
+			return nil, err
+		}
+		client, err = ms.createClient(arl)
+		if err != nil {
+			return nil, err
+		}
+	} else if err != nil {
+		return nil, err
+	}
+
+	if ms.arl.CanRenew() {
+		client.OnARLExpired = ms.arl.ARLExpiredCallback
+	}
+	return client, nil
+}
+
+func (ms *MusicService) createClient(arl string) (*miri.Client, error) {
+	dCfg, err := miri.NewConfig(arl, ms.us.Config.SecretKey)
+	if err != nil {
+		return nil, err
+	}
+	dCfg.Timeout = 30 * time.Minute
+	return miri.New(ms.us.Ctx, dCfg)
 }
 
 func (ms *MusicService) GetQueue(guildID string) *Queue {
