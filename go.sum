@@ -1,5 +1,5 @@
-github.com/birabittoh/miri v1.5.4 h1:7OLjiLXI/rl8D/7apz3fBHE7EsWR8NP7jPayW9hRYp8=
-github.com/birabittoh/miri v1.5.4/go.mod h1:sWHr/FTg7hcScTFaSZHpu4V6F1+0dQEph+4U7LzaURU=
+github.com/birabittoh/miri v1.5.5 h1:WOKECiS26FdEF9cCk/WPAve17w5AU8VD/1xmjcKINus=
+github.com/birabittoh/miri v1.5.5/go.mod h1:sWHr/FTg7hcScTFaSZHpu4V6F1+0dQEph+4U7LzaURU=
 github.com/cloudflare/circl v1.6.4 h1:pOXuDTCEYyzydgUpQ0CQz3LsinKjiSk6nNP5Lt5K64U=
 github.com/cloudflare/circl v1.6.4/go.mod h1:YxarevkLlbaHuWsxG6vmYNWBEsSp4pnp7j+4VljMavY=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

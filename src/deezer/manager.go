@@ -6,9 +6,12 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
+	"time"
 
 	"github.com/birabittoh/miri"
 )
+
+const checkInterval = 12 * time.Hour
 
 type Manager struct {
 	mu       sync.Mutex
@@ -19,12 +22,18 @@ type Manager struct {
 }
 
 func NewManager(logger *slog.Logger, arl, email, password string) *Manager {
-	return &Manager{
+	m := &Manager{
 		arl:      arl,
 		email:    email,
 		password: password,
 		logger:   logger,
 	}
+
+	if m.CanRenew() {
+		go m.backgroundLoop()
+	}
+
+	return m
 }
 
 func (m *Manager) CanRenew() bool {
@@ -70,4 +79,32 @@ func IsARLExpiredError(err error) bool {
 
 func (m *Manager) ARLExpiredCallback(ctx context.Context) (string, error) {
 	return m.Renew()
+}
+
+func (m *Manager) backgroundLoop() {
+	if m.ARL() == "" {
+		if _, err := m.Renew(); err != nil {
+			m.logger.Error("startup ARL fetch failed", "error", err)
+		}
+	}
+
+	ticker := time.NewTicker(checkInterval)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		arl := m.ARL()
+		if arl == "" {
+			if _, err := m.Renew(); err != nil {
+				m.logger.Error("periodic ARL renewal failed", "error", err)
+			}
+			continue
+		}
+
+		if err := miri.ValidateARL(context.Background(), arl); err != nil {
+			m.logger.Warn("ARL expired during periodic check, renewing...", "error", err)
+			if _, err := m.Renew(); err != nil {
+				m.logger.Error("periodic ARL renewal failed", "error", err)
+			}
+		}
+	}
 }
