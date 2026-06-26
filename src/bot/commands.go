@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"slices"
+	"sync"
 	"time"
 
 	"github.com/birabittoh/disgord/src/config"
@@ -27,12 +28,15 @@ type BotService struct {
 	aliasMap        map[string]string
 	commandNames    []string
 	watchdogDone    chan struct{}
+	ready           chan struct{}
+	readyOnce       sync.Once
 }
 
 func NewBotService(cfg *config.Config) (bs *BotService, err error) {
 	bs = &BotService{
 		US:       gl.NewUtilsService(cfg),
 		aliasMap: make(map[string]string),
+		ready:    make(chan struct{}),
 	}
 	bs.logger = slog.New(tint.NewHandler(os.Stdout, &tint.Options{
 		Level:      bs.US.Config.LogLevel,
@@ -61,9 +65,20 @@ func NewBotService(cfg *config.Config) (bs *BotService, err error) {
 	bs.US.Session.AddHandler(bs.messageHandler)
 	bs.US.Session.AddHandler(bs.readyHandler)
 	bs.US.Session.AddHandler(bs.slashHandler)
-	bs.US.Session.AddHandler(bs.MS.HandleBotVSU)
+	if bs.MS != nil {
+		bs.US.Session.AddHandler(bs.MS.HandleBotVSU)
+	}
 
-	bs.Start()
+	if err = bs.Start(); err != nil {
+		return nil, err
+	}
+
+	select {
+	case <-bs.ready:
+	case <-time.After(30 * time.Second):
+		bs.Stop()
+		return nil, errors.New("timed out waiting for Discord ready event")
+	}
 
 	return bs, nil
 }
@@ -164,6 +179,7 @@ func (bs *BotService) readyHandler(s *discordgo.Session, r *discordgo.Ready) {
 		},
 	})
 	bs.logger.Info("Logged in", "user", r.User.String())
+	bs.readyOnce.Do(func() { close(bs.ready) })
 }
 
 func (bs *BotService) initHandlers() {

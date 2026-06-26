@@ -31,6 +31,7 @@ FROM debian:bookworm-slim AS build-release-stage
 # Firefox runtime deps + ffmpeg
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
+    ca-certificates \
     ffmpeg \
     libgtk-3-0 libdbus-glib-1-2 libxt6 libasound2 \
     && rm -rf /var/lib/apt/lists/*
@@ -40,5 +41,6 @@ WORKDIR /app
 COPY templates ./templates
 COPY --from=builder /dist .
 COPY --from=builder /root/.cache/ms-playwright /root/.cache/ms-playwright
+COPY --from=builder /root/.cache/ms-playwright-go /root/.cache/ms-playwright-go
 
 ENTRYPOINT ["./disgord"]
