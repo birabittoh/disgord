@@ -6,9 +6,11 @@ import (
 	"os"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/joho/godotenv"
 )
 
-const HoneypotsFile = "honeypots.json"
+const HoneypotsEnvVar = "HONEYPOTS"
+const envFileName = ".env"
 
 type HoneypotState struct {
 	ChannelID string `json:"channel_id"`
@@ -18,17 +20,28 @@ type HoneypotState struct {
 
 func (bs *BotService) SaveHoneypots() {
 	bs.HoneypotsMu.RLock()
-	defer bs.HoneypotsMu.RUnlock()
+	data, err := json.Marshal(bs.Honeypots)
+	bs.HoneypotsMu.RUnlock()
 
-	data, err := json.MarshalIndent(bs.Honeypots, "", "  ")
 	if err != nil {
 		bs.logger.Error("failed to marshal honeypots config", "error", err)
 		return
 	}
 
-	err = os.WriteFile(HoneypotsFile, data, 0644)
+	jsonStr := string(data)
+	if err := os.Setenv(HoneypotsEnvVar, jsonStr); err != nil {
+		bs.logger.Error("failed to set honeypots env var", "error", err)
+	}
+
+	envMap, err := godotenv.Read(envFileName)
 	if err != nil {
-		bs.logger.Error("failed to write honeypots config file", "error", err)
+		envMap = make(map[string]string)
+	}
+
+	envMap[HoneypotsEnvVar] = jsonStr
+
+	if err := godotenv.Write(envMap, envFileName); err != nil {
+		bs.logger.Error("failed to write honeypots config to .env", "error", err)
 	}
 }
 
@@ -36,18 +49,16 @@ func (bs *BotService) LoadHoneypots() {
 	bs.HoneypotsMu.Lock()
 	defer bs.HoneypotsMu.Unlock()
 
-	data, err := os.ReadFile(HoneypotsFile)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return
-		}
-		bs.logger.Error("failed to read honeypots config file", "error", err)
-		return
+	if bs.Honeypots == nil {
+		bs.Honeypots = make(map[string]*HoneypotState)
 	}
 
-	err = json.Unmarshal(data, &bs.Honeypots)
-	if err != nil {
-		bs.logger.Error("failed to unmarshal honeypots config", "error", err)
+	envVal := os.Getenv(HoneypotsEnvVar)
+	if envVal != "" {
+		err := json.Unmarshal([]byte(envVal), &bs.Honeypots)
+		if err != nil {
+			bs.logger.Error("failed to unmarshal honeypots config from env", "error", err)
+		}
 	}
 }
 

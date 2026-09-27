@@ -47,9 +47,13 @@ func TestHoneypotStateManagement(t *testing.T) {
 }
 
 func TestHoneypotPersistence(t *testing.T) {
-	// Ensure we start without a file
-	os.Remove(HoneypotsFile)
-	defer os.Remove(HoneypotsFile)
+	// Clean up environment and files
+	os.Unsetenv(HoneypotsEnvVar)
+	os.Remove(".env")
+	defer func() {
+		os.Unsetenv(HoneypotsEnvVar)
+		os.Remove(".env")
+	}()
 
 	// Create a dummy BotService
 	bs := &BotService{
@@ -65,6 +69,11 @@ func TestHoneypotPersistence(t *testing.T) {
 
 	// Save
 	bs.SaveHoneypots()
+
+	// Verify env var was updated
+	if os.Getenv(HoneypotsEnvVar) == "" {
+		t.Fatalf("expected HONEYPOTS env var to be set")
+	}
 
 	// Create another dummy BotService and load
 	bs2 := &BotService{
