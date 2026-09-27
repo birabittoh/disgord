@@ -1,6 +1,7 @@
 package bot
 
 import (
+	"encoding/json"
 	"os"
 	"sync"
 	"testing"
@@ -47,9 +48,15 @@ func TestHoneypotStateManagement(t *testing.T) {
 }
 
 func TestHoneypotPersistence(t *testing.T) {
-	// Ensure we start without a file
-	os.Remove(HoneypotsFile)
-	defer os.Remove(HoneypotsFile)
+	// Clean up environment and files
+	os.Unsetenv(HoneypotsEnvVar)
+	os.Remove(".env")
+	os.Remove(legacyHoneypotsFile)
+	defer func() {
+		os.Unsetenv(HoneypotsEnvVar)
+		os.Remove(".env")
+		os.Remove(legacyHoneypotsFile)
+	}()
 
 	// Create a dummy BotService
 	bs := &BotService{
@@ -66,6 +73,11 @@ func TestHoneypotPersistence(t *testing.T) {
 	// Save
 	bs.SaveHoneypots()
 
+	// Verify env var was updated
+	if os.Getenv(HoneypotsEnvVar) == "" {
+		t.Fatalf("expected HONEYPOTS env var to be set")
+	}
+
 	// Create another dummy BotService and load
 	bs2 := &BotService{
 		Honeypots: make(map[string]*HoneypotState),
@@ -79,5 +91,49 @@ func TestHoneypotPersistence(t *testing.T) {
 
 	if state.ChannelID != "channel-abc" || state.MessageID != "msg-xyz" || state.BanCount != 42 {
 		t.Errorf("loaded honeypot state is incorrect: %+v", state)
+	}
+}
+
+func TestHoneypotLegacyMigration(t *testing.T) {
+	os.Unsetenv(HoneypotsEnvVar)
+	os.Remove(".env")
+	os.Remove(legacyHoneypotsFile)
+	defer func() {
+		os.Unsetenv(HoneypotsEnvVar)
+		os.Remove(".env")
+		os.Remove(legacyHoneypotsFile)
+	}()
+
+	// Create a legacy honeypots.json file
+	legacyData := map[string]*HoneypotState{
+		"guild-legacy": {
+			ChannelID: "channel-old",
+			MessageID: "msg-old",
+			BanCount:  10,
+		},
+	}
+	bytes, _ := json.Marshal(legacyData)
+	os.WriteFile(legacyHoneypotsFile, bytes, 0644)
+
+	// Load should migrate it to env & .env
+	bs := &BotService{}
+	bs.LoadHoneypots()
+
+	state, ok := bs.Honeypots["guild-legacy"]
+	if !ok {
+		t.Fatalf("expected legacy guild-legacy to be loaded")
+	}
+	if state.ChannelID != "channel-old" || state.BanCount != 10 {
+		t.Errorf("migrated state is incorrect: %+v", state)
+	}
+
+	// legacy file should be removed
+	if _, err := os.Stat(legacyHoneypotsFile); !os.IsNotExist(err) {
+		t.Errorf("expected legacy file to be removed after migration")
+	}
+
+	// env variable should now be set
+	if os.Getenv(HoneypotsEnvVar) == "" {
+		t.Errorf("expected HONEYPOTS env var to be set after migration")
 	}
 }
