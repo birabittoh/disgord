@@ -10,7 +10,6 @@ import (
 )
 
 const HoneypotsEnvVar = "HONEYPOTS"
-const legacyHoneypotsFile = "honeypots.json"
 const envFileName = ".env"
 
 type HoneypotState struct {
@@ -54,37 +53,12 @@ func (bs *BotService) LoadHoneypots() {
 		bs.Honeypots = make(map[string]*HoneypotState)
 	}
 
-	// 1. Try loading from HONEYPOTS environment variable
 	envVal := os.Getenv(HoneypotsEnvVar)
 	if envVal != "" {
 		err := json.Unmarshal([]byte(envVal), &bs.Honeypots)
 		if err != nil {
 			bs.logger.Error("failed to unmarshal honeypots config from env", "error", err)
-		} else {
-			return
 		}
-	}
-
-	// 2. Migration fallback: check if legacy honeypots.json file exists
-	data, err := os.ReadFile(legacyHoneypotsFile)
-	if err == nil {
-		err = json.Unmarshal(data, &bs.Honeypots)
-		if err != nil {
-			bs.logger.Error("failed to unmarshal legacy honeypots config file", "error", err)
-			return
-		}
-		// Save to env and remove legacy file
-		if marshalData, err := json.Marshal(bs.Honeypots); err == nil {
-			jsonStr := string(marshalData)
-			os.Setenv(HoneypotsEnvVar, jsonStr)
-			envMap, readErr := godotenv.Read(envFileName)
-			if readErr != nil {
-				envMap = make(map[string]string)
-			}
-			envMap[HoneypotsEnvVar] = jsonStr
-			godotenv.Write(envMap, envFileName)
-		}
-		os.Remove(legacyHoneypotsFile)
 	}
 }
 
